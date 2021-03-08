@@ -5337,12 +5337,12 @@ var PS = {};
   var Node_FS_Aff = $PS["Node.FS.Aff"];                
   var router = function (v) {
       if (v.path.length === 0) {
-          return Control_Bind.bind(Effect_Aff.bindAff)(Node_FS_Aff.readTextFile(Node_Encoding.UTF8.value)("./dist/index.html"))(function (contents) {
+          return Control_Bind.bind(Effect_Aff.bindAff)(Node_FS_Aff.readTextFile(Node_Encoding.UTF8.value)("./release/dist/index.html"))(function (contents) {
               return HTTPure_Response["ok'"](Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)(HTTPure_Headers.header("Content-Type")("text/html; charset=UTF-8"))(contents);
           });
       };
       if (v.path.length === 1 && v["path"][0] === "main.js") {
-          return Control_Bind.bind(Effect_Aff.bindAff)(Node_FS_Aff.readTextFile(Node_Encoding.UTF8.value)("./dist/main.js"))(function (contents) {
+          return Control_Bind.bind(Effect_Aff.bindAff)(Node_FS_Aff.readTextFile(Node_Encoding.UTF8.value)("./release/dist/main.js"))(function (contents) {
               return HTTPure_Response["ok'"](Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)(HTTPure_Headers.header("Content-Type")("text/javascript"))(contents);
           });
       };
@@ -5358,7 +5358,7 @@ var PS = {};
   var main = (function () {
       var serverOptions = {
           hostname: "0.0.0.0",
-          port: 8080,
+          port: 80,
           backlog: Data_Maybe.Nothing.value
       };
       var startupMsg = Data_Interpolate.i(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpString))))))("starting server: ")(serverOptions.hostname)(":")(Data_Show.show(Data_Show.showInt)(serverOptions.port))("/");

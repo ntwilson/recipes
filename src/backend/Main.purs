@@ -28,5 +28,5 @@ logMiddleware handler req = do
 main :: Effect Unit
 main = void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
   where
-    serverOptions = {hostname: "0.0.0.0", port: 8080, backlog: Nothing}
+    serverOptions = {hostname: "0.0.0.0", port: 80, backlog: Nothing}
     startupMsg = i "starting server: "serverOptions.hostname":"(show serverOptions.port)"/"

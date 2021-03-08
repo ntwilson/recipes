@@ -10,12 +10,12 @@
     "start": "node ./release/backend/index.js",
     "ps": "spago build --purs-args --stash",
     "test": "spago test --purs-args --stash",
-    "pack": "npm run build && webpack",
-    "watch": "npm run build && webpack -w",
+    "pack": "npm run ps && webpack",
+    "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
     "release-backend": "spago bundle-app -m Recipes.Backend.Main -t release/backend/index.js",
-    "release-frontend": "npm run build && webpack --config webpack.config.release.js",
-    "release": "npm run release-backend && npm run release-frontend"
+    "release-frontend": "webpack --config webpack.config.release.js",
+    "release": "npm run ps && npm run release-backend && npm run release-frontend"
   },
   "repository": {
     "type": "git",
