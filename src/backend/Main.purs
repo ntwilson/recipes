@@ -3,6 +3,8 @@ module Recipes.Backend.Main where
 import Prelude
 
 import Data.Foldable (intercalate)
+import Data.Interpolate (i)
+import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Class.Console (log)
 import HTTPure as HTTPure
@@ -20,8 +22,11 @@ router _ = HTTPure.notFound
   
 logMiddleware :: (HTTPure.Request -> HTTPure.ResponseM) -> HTTPure.Request -> HTTPure.ResponseM
 logMiddleware handler req = do
-  log $ "[" <> show req.method <> "]" <> intercalate "/" req.path
+  log $ i "["(show req.method)"]"(intercalate "/" req.path)
   handler req
   
 main :: Effect Unit
-main = void $ HTTPure.serve 8080 (logMiddleware router) $ log "starting server"
+main = void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
+  where
+    serverOptions = {hostname: "0.0.0.0", port: 8080, backlog: Nothing}
+    startupMsg = i "starting server: "serverOptions.hostname":"(show serverOptions.port)"/"

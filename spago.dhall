@@ -4,7 +4,14 @@ You can edit this file as you like.
 -}
 { name = "recipes"
 , dependencies =
-  [ "concur-react", "console", "effect", "httpure", "node-fs", "psci-support" ]
+  [ "concur-react"
+  , "console"
+  , "effect"
+  , "httpure"
+  , "interpolate"
+  , "node-fs"
+  , "psci-support"
+  ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }
