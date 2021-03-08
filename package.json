@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node -e \"require('./release/backend/index.js').main()\"",
-    "build": "spago build --purs-args --stash",
+    "ps": "spago build --purs-args --stash",
     "test": "spago test --purs-args --stash",
     "pack": "npm run build && webpack",
     "watch": "npm run build && webpack -w",
