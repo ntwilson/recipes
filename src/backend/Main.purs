@@ -30,11 +30,13 @@ logMiddleware handler req = do
 main :: Effect Unit
 main = do
   portStr <- lookupEnv "PORT"
+  mode <- lookupEnv "NODE_ENV"
   let 
+    hostname = if (mode == Just "production") then "0.0.0.0" else "localhost"
     port = fromMaybe 80 (fromString =<< portStr)
-    opts = serverOptions port
+    opts = serverOptions hostname port
     startupMsg = i "starting server: "opts.hostname":"(show port)"/"
   void $ HTTPure.serve' (opts) (logMiddleware router) $ log startupMsg 
   
   where 
-    serverOptions port = {hostname: "0.0.0.0", port, backlog: Nothing} 
+    serverOptions hostname port = {hostname, port, backlog: Nothing} 

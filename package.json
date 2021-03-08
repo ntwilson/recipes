@@ -10,6 +10,8 @@
     "start": "node ./release/backend/index.js",
     "ps": "spago build --purs-args --stash",
     "test": "spago test --purs-args --stash",
+    "go": "set PORT=8080&& spago run -m Recipes.Backend.Main --purs-args --stash",
+    "go-sh": "PORT=8080 spago run -m Recipes.Backend.Main --purs-args --stash",
     "pack": "npm run ps && webpack",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
