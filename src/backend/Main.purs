@@ -24,7 +24,7 @@ router _ = HTTPure.notFound
   
 logMiddleware :: (HTTPure.Request -> HTTPure.ResponseM) -> HTTPure.Request -> HTTPure.ResponseM
 logMiddleware handler req = do
-  log $ i "["(show req.method)"]"(intercalate "/" req.path)
+  log $ i "["(show req.method)"]/"(intercalate "/" req.path)
   handler req
   
 main :: Effect Unit
@@ -34,9 +34,8 @@ main = do
   let 
     hostname = if (mode == Just "production") then "0.0.0.0" else "localhost"
     port = fromMaybe 80 (fromString =<< portStr)
-    opts = serverOptions hostname port
-    startupMsg = i "starting server: "opts.hostname":"(show port)"/"
-  void $ HTTPure.serve' (opts) (logMiddleware router) $ log startupMsg 
+    serverOptions = {hostname, port, backlog: Nothing} 
+    startupMsg = i "starting server: "serverOptions.hostname":"(show port)"/"
+
+  void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
   
-  where 
-    serverOptions hostname port = {hostname, port, backlog: Nothing} 
