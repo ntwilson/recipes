@@ -10,6 +10,7 @@ You can edit this file as you like.
   , "httpure"
   , "interpolate"
   , "node-fs"
+  , "node-process"
   , "psci-support"
   ]
 , packages = ./packages.dhall

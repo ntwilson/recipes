@@ -3,13 +3,15 @@ module Recipes.Backend.Main where
 import Prelude
 
 import Data.Foldable (intercalate)
+import Data.Int (fromString)
 import Data.Interpolate (i)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Effect (Effect)
 import Effect.Class.Console (log)
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile)
+import Node.Process (lookupEnv)
 
 router :: HTTPure.Request -> HTTPure.ResponseM
 router {path: []} = do
@@ -26,7 +28,13 @@ logMiddleware handler req = do
   handler req
   
 main :: Effect Unit
-main = void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
-  where
-    serverOptions = {hostname: "0.0.0.0", port: 80, backlog: Nothing}
-    startupMsg = i "starting server: "serverOptions.hostname":"(show serverOptions.port)"/"
+main = do
+  portStr <- lookupEnv "PORT"
+  let 
+    port = fromMaybe 80 (fromString =<< portStr)
+    opts = serverOptions port
+    startupMsg = i "starting server: "opts.hostname":"(show port)"/"
+  void $ HTTPure.serve' (opts) (logMiddleware router) $ log startupMsg 
+  
+  where 
+    serverOptions port = {hostname: "0.0.0.0", port, backlog: Nothing} 
