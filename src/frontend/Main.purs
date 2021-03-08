@@ -13,7 +13,4 @@ content :: Widget HTML Void
 content = text "Hello World!"
 
 main :: Effect Unit
-main = do
-  log "gonna render stuff"
-  runWidgetInDom "contents" content
-  log "rendered"
+main = runWidgetInDom "contents" content
