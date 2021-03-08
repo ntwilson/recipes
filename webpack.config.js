@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './output/Recipes.Frontend.Main/index.js',
+  entry: './src/frontend/entry.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
   },
