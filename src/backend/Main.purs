@@ -13,10 +13,10 @@ import Node.FS.Aff (readTextFile)
 
 router :: HTTPure.Request -> HTTPure.ResponseM
 router {path: []} = do
-  contents <- readTextFile UTF8 "./dist/index.html"
+  contents <- readTextFile UTF8 "./release/dist/index.html"
   HTTPure.ok' (HTTPure.header "Content-Type" "text/html; charset=UTF-8") contents
 router {path: ["main.js"]} = do
-  contents <- readTextFile UTF8 "./dist/main.js" 
+  contents <- readTextFile UTF8 "./release/dist/main.js" 
   HTTPure.ok' (HTTPure.header "Content-Type" "text/javascript") contents
 router _ = HTTPure.notFound
   

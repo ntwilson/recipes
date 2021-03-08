@@ -7,12 +7,15 @@
     "test": "test"
   },
   "scripts": {
-    "start": "spago run --main Recipes.Backend.Main --purs-args --stash",
+    "start": "node -e \"require('./release/backend/index.js').main()\"",
     "build": "spago build --purs-args --stash",
     "test": "spago test --purs-args --stash",
     "pack": "npm run build && webpack",
     "watch": "npm run build && webpack -w",
-    "clean": "rm -r output/Recipes*"
+    "clean": "rm -r output/Recipes*",
+    "release-backend": "spago bundle-app -m Recipes.Backend.Main -t release/backend/index.js",
+    "release-frontend": "npm run build && webpack --config webpack.config.release.js",
+    "release": "npm run release-backend && npm run release-frontend"
   },
   "repository": {
     "type": "git",
@@ -25,11 +28,9 @@
   },
   "homepage": "https://github.com/ntwilson/recipes#readme",
   "devDependencies": {
-    "purescript": "^0.13.8",
-    "purescript-psa": "^0.8.2",
-    "spago": "^0.19.1",
     "webpack": "^5.24.3",
-    "webpack-cli": "^4.5.0"
+    "webpack-cli": "^4.5.0",
+    "webpack-merge": "^5.7.3"
   },
   "dependencies": {
     "react": "^17.0.1",
