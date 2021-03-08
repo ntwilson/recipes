@@ -1,0 +1,32 @@
+{
+  "name": "recipes",
+  "version": "1.0.0",
+  "description": "Track recipes and build grocery lists",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "spago run --main Recipes.Backend.Main --purs-args --stash",
+    "build": "spago build --purs-args --stash",
+    "test": "spago test --purs-args --stash",
+    "clean": "rm -r output/Recipes*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ntwilson/recipes.git"
+  },
+  "author": "ntwilson@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ntwilson/recipes/issues"
+  },
+  "homepage": "https://github.com/ntwilson/recipes#readme",
+  "devDependencies": {
+    "purescript": "^0.13.8",
+    "purescript-psa": "^0.8.2",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "spago": "^0.19.1"
+  }
+}

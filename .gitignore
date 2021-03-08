@@ -1,8 +1,13 @@
 # Dependencies
+.spago
 .psci_modules
 bower_components
 node_modules
 
 # Generated files
 .psci
+.psa-stash
+.psc-ide-port
+.purs-repl
+package-lock.json
 output
