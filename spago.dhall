@@ -6,6 +6,7 @@ You can edit this file as you like.
 , dependencies =
   [ "concur-react"
   , "console"
+  , "dotenv"
   , "effect"
   , "httpure"
   , "interpolate"

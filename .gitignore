@@ -1,3 +1,6 @@
+# Environment
+**/*.env
+
 # Dependencies
 .spago
 .psci_modules
