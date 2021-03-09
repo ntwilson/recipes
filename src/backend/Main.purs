@@ -6,7 +6,10 @@ import Data.Foldable (intercalate)
 import Data.Int (fromString)
 import Data.Interpolate (i)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Dotenv (loadFile)
 import Effect (Effect)
+import Effect.Aff (launchAff_)
+import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
@@ -28,14 +31,16 @@ logMiddleware handler req = do
   handler req
   
 main :: Effect Unit
-main = do
-  portStr <- lookupEnv "PORT"
-  mode <- lookupEnv "NODE_ENV"
-  let 
-    hostname = if (mode == Just "production") then "0.0.0.0" else "localhost"
-    port = fromMaybe 80 (fromString =<< portStr)
-    serverOptions = {hostname, port, backlog: Nothing} 
-    startupMsg = i "starting server: "serverOptions.hostname":"(show port)"/"
+main = launchAff_ do
+  _ <- loadFile
+  liftEffect $ do
+    portStr <- lookupEnv "PORT"
+    mode <- lookupEnv "NODE_ENV"
+    let 
+      hostname = if (mode == Just "production") then "0.0.0.0" else "localhost"
+      port = fromMaybe 80 (fromString =<< portStr)
+      serverOptions = {hostname, port, backlog: Nothing} 
+      startupMsg = i "starting server: "serverOptions.hostname":"(show port)"/"
 
-  void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
+    void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
   
