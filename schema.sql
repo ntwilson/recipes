@@ -1,0 +1,27 @@
+CREATE TABLE recipe (
+  name text NOT NULL, 
+  fullDescription text NOT NULL,
+  PRIMARY KEY(name)
+);
+
+CREATE TABLE ingredient (
+  name text NOT NULL,
+  store text NOT NULL,
+  section text,
+  common boolean NOT NULL,
+  PRIMARY KEY(name)
+);
+
+CREATE TABLE recipeIngredients (
+  recipe text NOT NULL,
+  ingredient text NOT NULL,
+  quantity int NOT NULL,
+  units text,
+  PRIMARY KEY(recipe, ingredient)
+);
+
+CREATE TABLE settings (
+  name text NOT NULL,
+  value text NOT NULL,
+  PRIMARY KEY(name)
+);
