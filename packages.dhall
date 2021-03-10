@@ -107,4 +107,61 @@ in  upstream
 let upstream =
       https://github.com/purescript/package-sets/releases/download/psc-0.13.8-20210226/packages.dhall sha256:7e973070e323137f27e12af93bc2c2f600d53ce4ae73bb51f34eb7d7ce0a43ea
 
-in  upstream
+
+let postgresql-client =
+  { dependencies =
+      [ "aff"
+      , "arrays"
+      , "bifunctors"
+      , "bytestrings"
+      , "datetime"
+      , "decimals"
+      , "effect"
+      , "either"
+      , "exceptions"
+      , "foldable-traversable"
+      , "foreign"
+      , "foreign-generic"
+      , "foreign-object"
+      , "js-date"
+      , "lists"
+      , "maybe"
+      , "newtype"
+      , "nullable"
+      , "prelude"
+      , "transformers"
+      , "tuples"
+      ]
+  , repo =
+      "https://github.com/rightfold/purescript-postgresql-client.git"
+  , version =
+      "v3.0.0"
+  }
+
+let selda = 
+  { dependencies =
+    [ "console"
+    , "exists"
+    , "heterogeneous"
+    , "lists"
+    , "node-sqlite3"
+    , "postgresql-client"
+    , "prelude"
+    , "simple-json"
+    , "strings"
+    , "test-unit"
+    , "transformers"
+    , "variant"
+    ]
+  , repo =
+    "https://github.com/Kamirus/purescript-selda.git"
+  , version =
+    "v0.1.0"
+  }
+
+let additions =
+  { postgresql-client = postgresql-client
+  , selda = selda
+  }
+
+in  upstream // additions

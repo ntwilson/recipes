@@ -15,7 +15,7 @@ CREATE TABLE ingredient (
 CREATE TABLE recipeIngredients (
   recipe text NOT NULL,
   ingredient text NOT NULL,
-  quantity int NOT NULL,
+  quantity double precision NOT NULL,
   units text,
   PRIMARY KEY(recipe, ingredient)
 );

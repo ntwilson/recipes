@@ -1,46 +1,42 @@
 module Recipes.Backend.Main where
 
-import Prelude
+import Backend.Prelude
 
-import Data.Foldable (intercalate)
-import Data.Int (fromString)
-import Data.Interpolate (i)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Dotenv (loadFile)
-import Effect (Effect)
-import Effect.Aff (launchAff_)
-import Effect.Class (liftEffect)
-import Effect.Class.Console (log)
+import Database.PostgreSQL (PGError)
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Node.FS.Aff (readTextFile)
-import Node.Process (lookupEnv)
+import Recipes.Backend.DB (RecipeIngredients, connection, recipeIngredients)
+import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
+import Selda (selectFrom)
+import Selda.PG.Aff (query)
 
-router :: HTTPure.Request -> HTTPure.ResponseM
-router {path: []} = do
-  contents <- readTextFile UTF8 "./release/dist/index.html"
+router :: String -> HTTPure.Request -> HTTPure.ResponseM
+router dist {path: []} = do
+  contents <- readTextFile UTF8 (i dist"/index.html")
   HTTPure.ok' (HTTPure.header "Content-Type" "text/html; charset=UTF-8") contents
-router {path: ["main.js"]} = do
-  contents <- readTextFile UTF8 "./release/dist/main.js" 
+router dist {path: ["main.js"]} = do
+  contents <- readTextFile UTF8 (i dist"/main.js")
   HTTPure.ok' (HTTPure.header "Content-Type" "text/javascript") contents
-router _ = HTTPure.notFound
+router _ {path: ["api","test"]} = do
+  contents <- show <$> butterChickenIngredients
+  log $ i "responding with "contents
+  HTTPure.ok contents
+router _ _ = HTTPure.notFound
   
-logMiddleware :: (HTTPure.Request -> HTTPure.ResponseM) -> HTTPure.Request -> HTTPure.ResponseM
-logMiddleware handler req = do
-  log $ i "["(show req.method)"]/"(intercalate "/" req.path)
-  handler req
-  
+butterChickenIngredients :: Aff $ Either PGError (Array $ Record RecipeIngredients)
+butterChickenIngredients = do 
+  conn <- liftEffect connection
+  query conn $ selectFrom recipeIngredients pure
+
 main :: Effect Unit
 main = launchAff_ do
-  _ <- loadFile
-  liftEffect $ do
-    portStr <- lookupEnv "PORT"
-    mode <- lookupEnv "NODE_ENV"
+  loadEnv
+  liftEffect $ do 
+    opts <- serverOptions
+    mode <- lookupEnv "MODE"
     let 
-      hostname = if (mode == Just "production") then "0.0.0.0" else "localhost"
-      port = fromMaybe 80 (fromString =<< portStr)
-      serverOptions = {hostname, port, backlog: Nothing} 
-      startupMsg = i "starting server: "serverOptions.hostname":"(show port)"/"
-
-    void $ HTTPure.serve' serverOptions (logMiddleware router) $ log startupMsg 
+      startupSuffix = maybe "" (\m -> i " in "m" mode") mode 
+      startupMsg = i "starting server: "opts.hostname":"(show opts.port)"/"startupSuffix
+      dist = if mode == Just "development" then "./dist" else "./release/dist"
+    void $ HTTPure.serve' opts (logMiddleware (router dist)) $ log startupMsg 
   
