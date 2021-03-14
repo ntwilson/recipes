@@ -2,8 +2,13 @@ module Recipes.Backend.DB where
 
 import Backend.Prelude
 
-import Database.PostgreSQL (Connection)
-import Selda (Table(..))
+import Database.PostgreSQL (class FromSQLRow, Connection)
+import Recipes.DataStructures (Ingredient, Recipe, RecipeIngredients, Settings)
+import Recipes.ErrorHandling (liftError)
+import Selda (FullQuery, Table(..))
+import Selda.Col (class GetCols)
+import Selda.PG.Aff (query)
+import Selda.PG.Utils (class ColsToPGHandler)
 
 data Client 
 foreign import newClient :: forall a. Record a -> Effect Client
@@ -24,35 +29,24 @@ connection = do
     client <- newClient { user, database, password }
     connect client
 
-type Recipe =
-  ( name :: String
-  , fullDescription :: String
-  )
+execQuery ∷ ∀ o i tup s
+  . ColsToPGHandler s i tup o
+  ⇒ GetCols i
+  ⇒ FromSQLRow tup
+  ⇒ Connection → FullQuery s (Record i) → Aff $ Array { | o }
+execQuery conn qry = do
+  result <- query conn qry
+  liftError result
+
 recipe :: Table Recipe
 recipe = Table { name: "recipe" }
 
-type Ingredient =
-  ( name :: String
-  , store :: String
-  , section :: Maybe String
-  , common :: Boolean
-  )
 ingredient :: Table Ingredient
 ingredient = Table { name: "ingredient" }
 
-type RecipeIngredients =
-  ( recipe :: String
-  , ingredient :: String
-  , quantity :: Number
-  , units :: Maybe String
-  )
 recipeIngredients :: Table RecipeIngredients
 recipeIngredients = Table { name: "recipeIngredients" }
 
-type Settings = 
-  ( name :: String
-  , value :: String
-  )
 settings :: Table Settings
 settings = Table { name: "settings" }
 

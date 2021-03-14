@@ -2,13 +2,14 @@ module Recipes.Backend.Main where
 
 import Backend.Prelude
 
-import Database.PostgreSQL (PGError)
+import Data.Argonaut (encodeJson)
+import Data.Argonaut as Json
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Recipes.Backend.DB (RecipeIngredients, connection, recipeIngredients)
+import Recipes.API (TestValue, RecipesValue, recipesRoute, testRoute)
+import Recipes.Backend.DB (connection, execQuery, recipe, recipeIngredients)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 import Selda (selectFrom)
-import Selda.PG.Aff (query)
 
 router :: String -> HTTPure.Request -> HTTPure.ResponseM
 router dist {path: []} = do
@@ -17,26 +18,32 @@ router dist {path: []} = do
 router dist {path: ["main.js"]} = do
   contents <- readTextFile UTF8 (i dist"/main.js")
   HTTPure.ok' (HTTPure.header "Content-Type" "text/javascript") contents
-router _ {path: ["api","test"]} = do
-  contents <- show <$> butterChickenIngredients
-  log $ i "responding with "contents
-  HTTPure.ok contents
+router _ {path} | path == testRoute = do
+  contents <- encodeJson <$> butterChickenIngredients
+  HTTPure.ok $ Json.stringify contents
+router _ {path} | path == recipesRoute = do
+  contents <- encodeJson <$> recipes 
+  HTTPure.ok $ Json.stringify contents
 router _ _ = HTTPure.notFound
   
-butterChickenIngredients :: Aff $ Either PGError (Array $ Record RecipeIngredients)
+butterChickenIngredients :: Aff $ TestValue
 butterChickenIngredients = do 
   conn <- liftEffect connection
-  query conn $ selectFrom recipeIngredients pure
+  execQuery conn $ selectFrom recipeIngredients pure
+
+recipes :: Aff $ RecipesValue
+recipes = do
+  conn <- liftEffect connection
+  ( execQuery conn $ selectFrom recipe (\{name} -> pure {name})) <##> _.name
 
 main :: Effect Unit
 main = launchAff_ do
   loadEnv
   liftEffect $ do 
-    opts <- serverOptions
+    config <- serverOptions
     mode <- lookupEnv "MODE"
     let 
       startupSuffix = maybe "" (\m -> i " in "m" mode") mode 
-      startupMsg = i "starting server: "opts.hostname":"(show opts.port)"/"startupSuffix
-      dist = if mode == Just "development" then "./dist" else "./release/dist"
-    void $ HTTPure.serve' opts (logMiddleware (router dist)) $ log startupMsg 
+      startupMsg = i "starting server: "config.opts.hostname":"(show config.opts.port)"/"startupSuffix
+    void $ HTTPure.serve' config.opts (logMiddleware (router config.dist)) $ log startupMsg
   
