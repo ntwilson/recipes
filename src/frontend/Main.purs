@@ -2,14 +2,12 @@ module Recipes.Frontend.Main where
 
 import Frontend.Prelude
 
-import Affjax (defaultRequest, printError, request)
 import Affjax.ResponseFormat as ResponseFormat
 import Concur.React.Props as Props
 import Concur.React.Run (runWidgetInDom)
-import Data.Argonaut (decodeJson, printJsonDecodeError)
+import Data.Argonaut (printJsonDecodeError)
 import Data.List (List(..), (:))
 import Data.List as List
-import Effect.Aff.Class (liftAff)
 import Recipes.API (TestValue, RecipesValue, recipesRoute, routeStr, testRoute)
 
 loadTest :: Aff String

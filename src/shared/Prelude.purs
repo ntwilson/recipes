@@ -2,6 +2,7 @@ module Shared.Prelude (module Exports, Dolla, type ($), doubleMap, revDoubleMap,
 
 import Prelude
 
+import Data.Argonaut (decodeJson, encodeJson) as Exports
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap) as Exports
 import Data.Either (Either(..), choose, either, fromLeft, fromRight, hush, isLeft, isRight, note, note') as Exports
 import Data.Interpolate (i) as Exports
