@@ -10,6 +10,7 @@ INSERT INTO recipe (name, fullDescription) VALUES ('Chicken Tikka Masala', 'Supe
 INSERT INTO recipe (name, fullDescription) VALUES ('Pad Thai Egg Roll in a Bowl', 'Super yummy');
 INSERT INTO recipe (name, fullDescription) VALUES ('Creamy White Chicken Chili', 'Super yummy');
 INSERT INTO recipe (name, fullDescription) VALUES ('Zuppa Toscana', 'Super yummy');
+INSERT INTO recipe (name, fullDescription) VALUES ('Frozen Pizza', 'Super yummy');
 COMMIT;
 
 DELETE FROM ingredient;

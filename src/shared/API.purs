@@ -2,7 +2,6 @@ module Recipes.API where
 
 import Shared.Prelude
 
-import Data.Foldable (intercalate)
 import Recipes.DataStructures (RecipeIngredients)
 
 recipesRoute :: Array String
