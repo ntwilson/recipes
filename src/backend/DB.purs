@@ -2,9 +2,11 @@ module Recipes.Backend.DB where
 
 import Backend.Prelude
 
-import Database.PostgreSQL (class FromSQLRow, Connection)
+import Control.Monad.Except (lift, throwError)
+import Control.Monad.Except.Checked (ExceptV)
+import Data.Variant (SProxy(..), Variant, inj)
+import Database.PostgreSQL (class FromSQLRow, Connection, PGError)
 import Recipes.DataStructures (Ingredient, Recipe, RecipeIngredients, Settings)
-import Recipes.ErrorHandling (liftError)
 import Selda (FullQuery, Table(..))
 import Selda.Col (class GetCols)
 import Selda.PG.Aff (query)
@@ -29,14 +31,20 @@ connection = do
     client <- newClient { user, database, password }
     connect client
 
-execQuery ∷ ∀ o i tup s
+type DBError r = (dbError :: PGError | r)
+dbError :: forall r. PGError -> Variant (DBError r)
+dbError = inj (SProxy :: _ "dbError")
+
+execQuery ∷ ∀ o i tup s r
   . ColsToPGHandler s i tup o
   ⇒ GetCols i
   ⇒ FromSQLRow tup
-  ⇒ Connection → FullQuery s (Record i) → Aff $ Array { | o }
+  ⇒ Connection → FullQuery s (Record i) → ExceptV (DBError r) Aff $ Array { | o }
 execQuery conn qry = do
-  result <- query conn qry
-  liftError result
+  result <- lift $ query conn qry
+  case result of
+    Left err -> throwError $ dbError err
+    Right ans -> pure ans
 
 recipe :: Table Recipe
 recipe = Table { name: "recipe" }
