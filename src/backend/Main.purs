@@ -36,22 +36,26 @@ router dist {path} =
   
 butterChickenIngredients :: Aff TestValue
 butterChickenIngredients = do 
-  conn <- liftEffect connection
+  conn <- connection
   execQuery conn $ selectFrom recipeIngredients pure
 
 recipes :: Aff RecipesValue
 recipes = do
-  conn <- liftEffect connection
+  conn <- connection
   ( execQuery conn $ selectFrom recipe (\{name} -> pure {name})) <##> _.name
 
 main :: Effect Unit
 main = launchAff_ do
   loadEnv
-  liftEffect $ do 
-    config <- serverOptions
-    mode <- lookupEnv "MODE"
-    let 
-      startupSuffix = maybe "" (\m -> i " in "m" mode") mode 
-      startupMsg = i "starting server: "config.opts.hostname":"(show config.opts.port)"/"startupSuffix
-    void $ HTTPure.serve' config.opts (logMiddleware (router config.dist)) $ log startupMsg
+  config <- serverOptions
+  mode <- env "MODE"
+  let 
+    startupSuffix = maybe "" (\m -> i " in "m" mode") mode 
+    startupMsg = i "starting server: "config.opts.hostname":"(show config.opts.port)"/"startupSuffix
+  serve config.opts (logMiddleware (router config.dist)) $ log startupMsg
+
+  where 
+    env = liftEffect <<< lookupEnv
+    serve options middleware startupAction = 
+      liftEffect $ void $ HTTPure.serve' options middleware startupAction
   

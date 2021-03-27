@@ -17,6 +17,7 @@ You can edit this file as you like.
   , "postgresql-client"
   , "psci-support"
   , "selda"
+  , "typelevel-prelude"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

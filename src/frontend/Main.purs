@@ -27,12 +27,12 @@ loadRecipes = do
   {body} <- resp # lmap printError # liftError
   decodeJson body # lmap printJsonDecodeError # liftError
 
-recipeList :: forall f. Traversable f => f String -> Widget HTML String
+recipeList :: ∀ f. Traversable f => f String -> Widget HTML String
 recipeList allRecipes = 
   fold (allRecipes <#> \recipe -> div' [input [Props._type "checkbox", Props.onChange $> recipe] <|> text recipe])
 
 data RecipeSelection = AnotherSelection String | Submit
-selectedRecipes :: forall f. Traversable f => f String -> List String -> Widget HTML $ List String
+selectedRecipes :: ∀ f. Traversable f => f String -> List String -> Widget HTML $ List String
 selectedRecipes allRecipes selectedRecipesSoFar = do
   selection <- 
     fold

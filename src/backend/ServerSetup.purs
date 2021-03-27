@@ -16,14 +16,17 @@ logMiddleware handler req = do
   log $ i "["(show req.method)"] /"(intercalate "/" req.path)
   handler req
 
-serverOptions :: Effect {opts :: HTTP.ListenOptions, dist :: String}
+serverOptions :: ∀ eff. MonadEffect eff => eff {opts :: HTTP.ListenOptions, dist :: String}
 serverOptions = do
-  portStr <- lookupEnv "PORT"
-  hostEnv <- lookupEnv "HOST"
-  mode <- lookupEnv "MODE"
+  portStr <- env "PORT"
+  hostEnv <- env "HOST"
+  mode <- env "MODE"
   let 
     hostname = fromMaybe "0.0.0.0" hostEnv
     port = fromMaybe 80 (Int.fromString =<< portStr)
     dist = if mode == Just "development" then "./dist" else "./release/dist"
   pure {opts: {hostname, port, backlog: Nothing}, dist} 
+  
+  where  
+    env = liftEffect <<< lookupEnv
   

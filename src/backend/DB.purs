@@ -11,32 +11,33 @@ import Selda.PG.Aff (query)
 import Selda.PG.Utils (class ColsToPGHandler)
 
 data Client 
-foreign import newClient :: forall a. Record a -> Effect Client
+foreign import newClient :: ∀ a. Record a -> Effect Client
 foreign import connect :: Client -> Effect Connection
 
-connection :: Effect Connection
+connection :: ∀ eff. MonadEffect eff => eff Connection
 connection = do
-  mode <- lookupEnv "MODE"
+  mode <- env "MODE"
   if mode /= Just "development"
   then do
-    connectionString <- fromMaybe "" <$> lookupEnv "DATABASE_URL"
-    client <- newClient { connectionString, ssl: { rejectUnauthorized: false } }
-    connect client
+    connectionString <- fromMaybe "" <$> env "DATABASE_URL"
+    client <- liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
+    liftEffect $ connect client
   else do
-    database <- fromMaybe "recipes" <$> lookupEnv "DATABASE_NAME"
-    user <- fromMaybe "" <$> lookupEnv "DATABASE_USER"
-    password <- fromMaybe "" <$> lookupEnv "DATABASE_PASSWORD"
-    client <- newClient { user, database, password }
-    connect client
+    database <- fromMaybe "recipes" <$> env "DATABASE_NAME"
+    user <- fromMaybe "" <$> env "DATABASE_USER"
+    password <- fromMaybe "" <$> env "DATABASE_PASSWORD"
+    client <- liftEffect $ newClient { user, database, password }
+    liftEffect $ connect client
+  
+  where
+    env = liftEffect <<< lookupEnv
 
 execQuery ∷ ∀ o i tup s
   . ColsToPGHandler s i tup o
-  ⇒ GetCols i
-  ⇒ FromSQLRow tup
-  ⇒ Connection → FullQuery s (Record i) → Aff $ Array { | o }
-execQuery conn qry = do
-  result <- query conn qry
-  liftError result
+  => GetCols i
+  => FromSQLRow tup
+  => Connection → FullQuery s (Record i) → Aff $ Array { | o }
+execQuery conn qry = query conn qry >>= liftError
 
 recipe :: Table Recipe
 recipe = Table { name: "recipe" }

@@ -12,7 +12,7 @@ import Effect.Exception (Error, error)
 -- | These functions should _generally_ be avoided, as we would prefer to at a minimum log the error to the console
 -- | if an error arises so that it's easier to debug.  This function is a replacement for `launchAff` or `forkAff` where
 -- | a handler is provided in the event of an error.
-launchAffWithHandler :: forall a. (Error -> Effect Unit) -> Aff a -> Effect Unit
+launchAffWithHandler :: ∀ a. (Error -> Effect Unit) -> Aff a -> Effect Unit
 launchAffWithHandler handler aff = 
   aff # runAff_ (case _ of
     Left err -> handler err
@@ -36,7 +36,7 @@ fromMessage = fromThrowable
 -- | `Maybe`, `Effect`, and `Aff` monads all propagate errors in this way. By making a function return a monad of this
 -- | class, the specific monad used is determined by the caller. If run from an `Either` monad, it'll return a `Left` 
 -- | in the event of an error.  If run from an `Aff` monad, it'll throw an `Error` in the event of an error.
--- | To raise an error in this monad, you can use `throwError $ fromThrowable yourErr`. 
+-- | To raise an error in this monad, you can use `throw yourErr`. 
 -- | There are three type variables.  The first is the type of error thrown by the function.  The second
 -- | is the monad that will propagate the error (probably `Either`, `Maybe`, `Aff`, or `Effect`).  Since not
 -- | all of these monads support any type of error, the third is the type of error that gets propagated,
@@ -52,7 +52,8 @@ instance throws :: (MonadError prop monad, Throwable thrown prop) => Throws thro
 
 -- | Take a concrete Either and lift it into your monad of choice.
 liftError :: forall monad prop thrown a. Throws thrown monad prop => Either thrown a -> monad a
-liftError (Left t) = throwError $ fromThrowable t
+liftError (Left t) = throw t
 liftError (Right a) = pure a
 
-
+throw :: ∀ thrown monad prop a. Throws thrown monad prop => thrown -> monad a
+throw = throwError <<< fromThrowable
