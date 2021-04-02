@@ -3,7 +3,7 @@ module Recipes.Backend.DB where
 import Backend.Prelude
 
 import Database.PostgreSQL (class FromSQLRow, Connection)
-import Recipes.DataStructures (Ingredient, Recipe, RecipeIngredients, Settings)
+import Recipes.DataStructures (IngredientRow, RecipeRow, RecipeIngredientsRow, SettingsRow)
 import Recipes.ErrorHandling (liftError)
 import Selda (FullQuery, Table(..))
 import Selda.Col (class GetCols)
@@ -39,15 +39,15 @@ execQuery ∷ ∀ o i tup s
   => Connection → FullQuery s (Record i) → Aff $ Array { | o }
 execQuery conn qry = query conn qry >>= liftError
 
-recipe :: Table Recipe
+recipe :: Table RecipeRow
 recipe = Table { name: "recipe" }
 
-ingredient :: Table Ingredient
+ingredient :: Table IngredientRow
 ingredient = Table { name: "ingredient" }
 
-recipeIngredients :: Table RecipeIngredients
+recipeIngredients :: Table RecipeIngredientsRow
 recipeIngredients = Table { name: "recipeIngredients" }
 
-settings :: Table Settings
+settings :: Table SettingsRow
 settings = Table { name: "settings" }
 

@@ -8,18 +8,7 @@ import Concur.React.Run (runWidgetInDom)
 import Data.Argonaut (printJsonDecodeError)
 import Data.List (List(..), (:))
 import Data.List as List
-import Recipes.API (TestValue, RecipesValue, recipesRoute, routeStr, testRoute)
-
-loadTest :: Aff String
-loadTest = do
-  resp <- request (defaultRequest { url = routeStr testRoute, responseFormat = ResponseFormat.json })
-  pure $ either (\err -> i "Error!  "err) identity $ processedResp resp
-
-  where 
-    processedResp resp = do
-      {body} <- resp # lmap printError
-      (x :: TestValue) <- decodeJson body # lmap printJsonDecodeError
-      pure $ show x
+import Recipes.API (RecipesValue, recipesRoute, routeStr)
 
 loadRecipes :: Aff RecipesValue
 loadRecipes = do

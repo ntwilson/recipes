@@ -3,12 +3,17 @@ module Recipes.Backend.Main where
 import Backend.Prelude
 
 import Data.Argonaut as Json
+import Data.List (List)
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Recipes.API (TestValue, RecipesValue, recipesRoute, testRoute)
-import Recipes.Backend.DB (connection, execQuery, recipe, recipeIngredients)
+import Recipes.API (RecipesValue, recipesRoute)
+import Recipes.Backend.DB (connection, execQuery, recipe)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
+import Recipes.DataStructures (Ingredient)
 import Selda (selectFrom)
+
+data State = InputRecipes | CheckKitchen (List Ingredient) | BuyGroceries (List Ingredient)
+
 
 router :: String -> HTTPure.Request -> HTTPure.ResponseM
 router dist {path} = 
@@ -22,10 +27,6 @@ router dist {path} =
       contents <- readTextFile UTF8 (i dist"/main.js")
       HTTPure.ok' (HTTPure.header "Content-Type" "text/javascript") contents
 
-    rtr route | route == testRoute = do
-      contents <- encodeJson <$> butterChickenIngredients
-      HTTPure.ok $ Json.stringify contents
-
     rtr route | route == recipesRoute = do
       contents <- encodeJson <$> recipes 
       HTTPure.ok $ Json.stringify contents
@@ -34,11 +35,6 @@ router dist {path} =
     
     errHandler err = HTTPure.internalServerError $ show err
   
-butterChickenIngredients :: Aff TestValue
-butterChickenIngredients = do 
-  conn <- connection
-  execQuery conn $ selectFrom recipeIngredients pure
-
 recipes :: Aff RecipesValue
 recipes = do
   conn <- connection
