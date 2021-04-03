@@ -1,16 +1,16 @@
 DELETE FROM recipe;
 BEGIN;
-INSERT INTO recipe (name, fullDescription) VALUES ('Butter Chicken', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Hungarian Goulash', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Simple Chili', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Mexican Beef Rice Casserole', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Balsamic Tomato & Herb Chicken', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Firecracker Meatballs', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Chicken Tikka Masala', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Pad Thai Egg Roll in a Bowl', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Creamy White Chicken Chili', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Zuppa Toscana', 'Super yummy');
-INSERT INTO recipe (name, fullDescription) VALUES ('Frozen Pizza', 'Super yummy');
+INSERT INTO recipe (name) VALUES ('Butter Chicken');
+INSERT INTO recipe (name) VALUES ('Hungarian Goulash');
+INSERT INTO recipe (name) VALUES ('Simple Chili');
+INSERT INTO recipe (name) VALUES ('Mexican Beef Rice Casserole');
+INSERT INTO recipe (name) VALUES ('Balsamic Tomato & Herb Chicken');
+INSERT INTO recipe (name) VALUES ('Firecracker Meatballs');
+INSERT INTO recipe (name) VALUES ('Chicken Tikka Masala');
+INSERT INTO recipe (name) VALUES ('Pad Thai Egg Roll in a Bowl');
+INSERT INTO recipe (name) VALUES ('Creamy White Chicken Chili');
+INSERT INTO recipe (name) VALUES ('Zuppa Toscana');
+INSERT INTO recipe (name) VALUES ('Frozen Pizza');
 COMMIT;
 
 DELETE FROM ingredient;
