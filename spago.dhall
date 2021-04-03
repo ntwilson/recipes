@@ -17,6 +17,8 @@ You can edit this file as you like.
   , "postgresql-client"
   , "psci-support"
   , "selda"
+  , "spec"
+  , "spec-discovery"
   , "typelevel-prelude"
   ]
 , packages = ./packages.dhall
