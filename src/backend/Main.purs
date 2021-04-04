@@ -9,7 +9,7 @@ import Data.List as List
 import HTTPure as HTTPure
 import HTTPure.Method (Method(..))
 import Node.Encoding (Encoding(..))
-import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, submitRecipesRoute)
+import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, submitRecipesRoute)
 import Recipes.Backend.DB (appState, connection, execQuery, execUpdate, ingredient, recipe, recipeIngredients)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 import Recipes.DataStructures (AppState(..), Ingredient, RecipeIngredients, SerializedAppState, decodeAppState, encodeAppState)
@@ -53,6 +53,10 @@ router dist rqst =
     rtr Get route | route == currentStateRoute = do
       state <- getSerializedState
       HTTPure.ok $ Json.stringify $ encodeJson state
+
+    rtr Get route | route == resetStateRoute = do
+      setState InputRecipes
+      HTTPure.ok "success"
 
     rtr _ _ = HTTPure.notFound
     

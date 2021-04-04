@@ -10,7 +10,7 @@ import Data.Argonaut (printJsonDecodeError)
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..), (:))
 import Data.List as List
-import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, routeStr, submitRecipesRoute)
+import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, routeStr, submitRecipesRoute)
 import Recipes.DataStructures (AppState(..), Ingredient, StoreItem, decodeAppState)
 import Recipes.ErrorHandling (throw)
 import Web.HTML (window)
@@ -82,7 +82,20 @@ inputRecipes = do
 groceryList :: List StoreItem -> Widget HTML Unit
 groceryList items = do 
   -- , Props.onChange $> name
-  fold (items <#> \{amount, ingredient:{name}} -> div' [input [Props._type "checkbox"] <|> text (i amount" "name)])
+  ( fold (items <#> \{amount, ingredient:{name}} -> div' [input [Props._type "checkbox"] <|> text (i amount" "name)])
+  <> div' [button [Props.onClick] [text "Restart"]] $> unit
+  )
+
+  liftAff resetState
+  liftEffect (window >>= location >>= reload)
+
+  where 
+    resetState = do 
+      tryResp <- request $ defaultRequest { url = routeStr resetStateRoute }
+      resp <- tryResp # lmap printError # liftError
+      if between 200 299 $ unwrap resp.status 
+      then pure unit
+      else throw (i"status "(show $ unwrap resp.status)"." :: String)
 
 content :: Widget HTML Unit
 content = do
@@ -91,15 +104,6 @@ content = do
     InputRecipes -> inputRecipes
     CheckKitchen ingredients -> groceryList ingredients
     BuyGroceries ingredients -> groceryList ingredients
-
-
-
--- content :: Widget HTML Void
--- content = do
---   recipes <- (text "Loading..." <|> liftAff loadRecipes)
---   selected <- selectedRecipes recipes Nil
---   liftAff $ submitRecipes selected
---   text "Recipes submitted."
 
 main :: Effect Unit
 main = runWidgetInDom "contents" content
