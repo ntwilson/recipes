@@ -3,12 +3,12 @@ module Recipes.Backend.DB where
 import Backend.Prelude
 
 import Database.PostgreSQL (class FromSQLRow, Connection)
-import Recipes.DataStructures (IngredientRow, RecipeRow, RecipeIngredientsRow, SettingsRow)
+import Recipes.DataStructures (IngredientRow, RecipeIngredientsRow, RecipeRow, SettingsRow, AppStateRow)
 import Recipes.ErrorHandling (liftError)
-import Selda (FullQuery, Table(..))
+import Selda (Col, FullQuery, Table(..))
 import Selda.Col (class GetCols)
-import Selda.PG.Aff (query)
-import Selda.PG.Utils (class ColsToPGHandler)
+import Selda.PG.Aff (query, update)
+import Selda.PG.Utils (class ColsToPGHandler, class TableToColsWithoutAlias)
 
 data Client 
 foreign import newClient :: ∀ a. Record a -> Effect Client
@@ -39,6 +39,18 @@ execQuery ∷ ∀ o i tup s
   => Connection → FullQuery s (Record i) → Aff $ Array { | o }
 execQuery conn qry = query conn qry >>= liftError
 
+execUpdate
+  ∷ ∀ r s r'
+  . TableToColsWithoutAlias r r'
+  => GetCols r'
+  => Connection 
+  → Table r 
+  → ({ | r' } → Col s Boolean) 
+  → ({ | r' } → { | r' })
+  → Aff Unit
+execUpdate conn table pred up = update conn table pred up >>= liftError
+
+
 recipe :: Table RecipeRow
 recipe = Table { name: "recipe" }
 
@@ -50,4 +62,8 @@ recipeIngredients = Table { name: "recipeIngredients" }
 
 settings :: Table SettingsRow
 settings = Table { name: "settings" }
+
+appState :: Table AppStateRow
+appState = Table { name: "appState" }
+
 

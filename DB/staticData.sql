@@ -53,3 +53,7 @@ INSERT INTO settings (name, value) VALUES (
   '1.0'
 );
 COMMIT;
+
+BEGIN;
+INSERT INTO appState (name) VALUES ('input recipes');
+COMMIT;

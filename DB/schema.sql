@@ -24,3 +24,9 @@ CREATE TABLE settings (
   value text NOT NULL,
   PRIMARY KEY(name)
 );
+
+CREATE TABLE appState (
+  name text NOT NULL, 
+  ingredients text,
+  PRIMARY KEY(name)
+);

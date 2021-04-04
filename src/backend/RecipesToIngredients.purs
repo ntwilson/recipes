@@ -7,9 +7,9 @@ import Data.List as List
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty as NEList
 import Data.NonEmpty (foldl1)
-import Recipes.DataStructures (Ingredient, RecipeIngredients)
+import Recipes.DataStructures (Ingredient, RecipeIngredients, StoreItem)
 
-recipesToIngredients :: List RecipeIngredients -> List Ingredient -> List String -> List { amount :: String, ingredient :: Ingredient }
+recipesToIngredients :: List RecipeIngredients -> List Ingredient -> List String -> List StoreItem
 recipesToIngredients recipeIngredients allIngredients recipes = aggregatedIngredients
   where
     totalIngredients :: List RecipeIngredients
