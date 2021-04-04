@@ -1,48 +1,123 @@
 DELETE FROM recipe;
 BEGIN;
-INSERT INTO recipe (name) VALUES ('Butter Chicken');
-INSERT INTO recipe (name) VALUES ('Hungarian Goulash');
-INSERT INTO recipe (name) VALUES ('Simple Chili');
-INSERT INTO recipe (name) VALUES ('Mexican Beef Rice Casserole');
 INSERT INTO recipe (name) VALUES ('Balsamic Tomato & Herb Chicken');
+INSERT INTO recipe (name) VALUES ('Butter Chicken');
 INSERT INTO recipe (name) VALUES ('Firecracker Meatballs');
-INSERT INTO recipe (name) VALUES ('Chicken Tikka Masala');
-INSERT INTO recipe (name) VALUES ('Pad Thai Egg Roll in a Bowl');
-INSERT INTO recipe (name) VALUES ('Creamy White Chicken Chili');
-INSERT INTO recipe (name) VALUES ('Zuppa Toscana');
-INSERT INTO recipe (name) VALUES ('Frozen Pizza');
+INSERT INTO recipe (name) VALUES ('Pork Carnitas Tacos');
+
+-- INSERT INTO recipe (name) VALUES ('Hungarian Goulash');
+-- INSERT INTO recipe (name) VALUES ('Simple Chili');
+-- INSERT INTO recipe (name) VALUES ('Mexican Beef Rice Casserole');
+-- INSERT INTO recipe (name) VALUES ('Chicken Tikka Masala');
+-- INSERT INTO recipe (name) VALUES ('Pad Thai Egg Roll in a Bowl');
+-- INSERT INTO recipe (name) VALUES ('Creamy White Chicken Chili');
+-- INSERT INTO recipe (name) VALUES ('Zuppa Toscana');
+-- INSERT INTO recipe (name) VALUES ('Frozen Pizza');
 COMMIT;
 
 DELETE FROM ingredient;
 BEGIN;
-INSERT INTO ingredient (name, store, section, common) VALUES (
-  'heavy cream',
-  'ALDI',
-  'Dairy',
-  true
-);
-INSERT INTO ingredient (name, store, section, common) VALUES (
-  'chicken',
-  'ALDI',
-  'Meat',
-  false
-);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Carrots', 'ALDI', 'Produce', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Scallions', 'ALDI', 'Produce', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Heavy cream', 'ALDI', 'Dairy', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Ginger', 'Costco', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Almond flour', 'Harris Teeter', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Balsamic vinegar', 'Costco', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Butter', 'ALDI', 'Dairy', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Chicken', 'Costco', 'Meat', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Chicken stock', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Chili flakes', 'Harris Teeter', 'Spices', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Chipotle powder', 'Harris Teeter', 'Spices', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Chives', 'Harris Teeter', 'Produce', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Cilantro', 'ALDI', 'Produce', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Garam masala', 'Harris Teeter', 'Spices', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Garlic', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Ground beef', 'ALDI', 'Meat', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Ground pork', 'ALDI', 'Meat', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Honey', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Italian seasoning', 'ALDI', 'Spices', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Limes', 'Harris Teeter', 'Produce', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Liquid aminos', 'Harris Teeter', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Mayonnaise', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Monterey jack', 'ALDI', 'Dairy', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Mozzarella', 'ALDI', 'Dairy', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Olive oil', 'Costco', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Onion', 'ALDI', 'Produce', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Paprika', 'ALDI', 'Spices', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Parsley', 'ALDI', 'Produce', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Poblano pepper', 'Harris Teeter', 'Produce', false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Red curry paste', 'Harris Teeter', 'International', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Rice', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Salt', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Sesame seeds', 'Harris Teeter', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Sour cream', 'ALDI', 'Dairy', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Southwest spice blend', 'ALDI', 'Spices', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Spaghetti', 'Costco', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Sriracha', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Sugar', 'Costco', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Tomato sauce', 'ALDI', NULL, false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Tomato paste', 'ALDI', NULL, false);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Tomatoes', 'ALDI', 'Produce', true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('Tortillas', 'ALDI', NULL, true);
+INSERT INTO ingredient (name, store, section, common) VALUES ('White wine vinegar', 'Harris Teeter', NULL, true);
 COMMIT;
 
 DELETE FROM recipeIngredients;
 BEGIN;
-INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES (
-  'Butter Chicken',
-  'heavy cream',
-  0.5,
-  'cups'
-);
-INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES (
-  'Butter Chicken',
-  'chicken',
-  2,
-  'lbs'
-);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Carrots', 24, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Scallions', 4, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Ginger', 0.75, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Mayonnaise', 4, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Sour cream', 4, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Honey', 4, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Liquid aminos', 4, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Sriracha', 2, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Sesame seeds', 2, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Rice', 1, 'cups');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Ground beef', 20, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Almond flour', 0.5, 'cups');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Chili flakes', 1, 'tsp');
+
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Onion', 2, 'cups');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Garlic', 5, 'cloves');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Butter', 4, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Chicken', 2, 'lbs');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Tomato sauce', 15, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Tomato paste', 3, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Red curry paste', 2, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Garam masala', 2, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Ginger', 1.5, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Salt', 1, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Paprika', 0.5, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Heavy cream', 0.5, 'cups');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Cilantro', 1, NULL);
+
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Tomatoes', 2, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Chives', 1, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Parsley', 1, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Chicken', 20, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Italian seasoning', 1, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Mozzarella', 1, 'cups');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Spaghetti', 12, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Balsamic vinegar', 5, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Butter', 8, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Olive oil', 2, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Balsamic Tomato & Herb Chicken', 'Sugar', 0.5, 'tsp');
+
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Onion', 1, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Poblano pepper', 1, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Cilantro', 0.5, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Tomatoes', 2, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Limes', 1, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'White wine vinegar', 5, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Ground pork', 20, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Southwest spice blend', 1, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Chicken stock', 1, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Tomato paste', 1.5, 'oz');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Sour cream', 4, 'tbsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Chipotle powder', 1, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Tortillas', 12, NULL);
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Monterey jack', 0.5, 'cup');
 COMMIT;
 
 
@@ -52,8 +127,4 @@ INSERT INTO settings (name, value) VALUES (
   'schemaVersion',
   '1.0'
 );
-COMMIT;
-
-BEGIN;
-INSERT INTO appState (name) VALUES ('input recipes');
 COMMIT;
