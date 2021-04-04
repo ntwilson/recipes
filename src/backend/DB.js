@@ -12,3 +12,9 @@ exports.connect = function(client) {
     return client;
   }
 }
+
+exports.disconnect = function(client) {
+  return function () { 
+    client.end();
+  }
+}

@@ -77,6 +77,7 @@ INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Fir
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Ground beef', 20, 'oz');
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Almond flour', 0.5, 'cups');
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Chili flakes', 1, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Firecracker Meatballs', 'Olive oil', 1, 'tbsp');
 
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Onion', 2, 'cups');
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Butter Chicken', 'Garlic', 5, 'cloves');
@@ -118,6 +119,8 @@ INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Por
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Chipotle powder', 1, 'tsp');
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Tortillas', 12, NULL);
 INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Monterey jack', 0.5, 'cup');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Olive oil', 2, 'tsp');
+INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('Pork Carnitas Tacos', 'Sugar', 2, 'tsp');
 COMMIT;
 
 

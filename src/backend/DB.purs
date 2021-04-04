@@ -13,6 +13,7 @@ import Selda.PG.Utils (class ColsToPGHandler, class TableToColsWithoutAlias)
 data Client 
 foreign import newClient :: ∀ a. Record a -> Effect Client
 foreign import connect :: Client -> Effect Connection
+foreign import disconnect :: Client -> Effect Unit
 
 connection :: ∀ eff. MonadEffect eff => eff Connection
 connection = do
@@ -31,6 +32,12 @@ connection = do
   
   where
     env = liftEffect <<< lookupEnv
+
+withConnection :: ∀ eff a. MonadEffect eff => (Connection -> eff a) -> eff a
+withConnection action = do
+  conn <- connection
+  ans <- action conn
+  pure ans
 
 execQuery ∷ ∀ o i tup s
   . ColsToPGHandler s i tup o

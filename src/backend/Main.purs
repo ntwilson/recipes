@@ -10,7 +10,7 @@ import HTTPure as HTTPure
 import HTTPure.Method (Method(..))
 import Node.Encoding (Encoding(..))
 import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitRecipesRoute)
-import Recipes.Backend.DB (appState, connection, execQuery, execUpdate, ingredient, recipe, recipeIngredients)
+import Recipes.Backend.DB (appState, withConnection, execQuery, execUpdate, ingredient, recipe, recipeIngredients)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 import Recipes.DataStructures (AppState(..), Ingredient, RecipeIngredients, SerializedAppState, decodeAppState, encodeAppState)
 import Recipes.RecipesToIngredients (recipesToIngredients)
@@ -85,37 +85,31 @@ router dist rqst =
     errHandler err = HTTPure.internalServerError $ show err
   
 allRecipes :: Aff RecipesValue
-allRecipes = do
-  conn <- connection
+allRecipes = withConnection $ \conn ->
   ( execQuery conn $ selectFrom recipe (\{name} -> pure {name})) <##> _.name
 
 allIngredients :: Aff $ List Ingredient
-allIngredients = do
-  conn <- connection 
+allIngredients = withConnection $ \conn ->
   List.fromFoldable <$> (execQuery conn $ selectFrom ingredient pure)
 
 allRecipeIngredients :: Aff $ List RecipeIngredients 
-allRecipeIngredients = do
-  conn <- connection
+allRecipeIngredients = withConnection $ \conn ->
   List.fromFoldable <$> (execQuery conn $ selectFrom recipeIngredients pure)
 
 getSerializedState :: Aff SerializedAppState
-getSerializedState = do
-  conn <- connection
+getSerializedState = withConnection $ \conn -> do
   serializedRecords <- execQuery conn $ selectFrom appState pure 
   Array.head serializedRecords # note "No appState record found in the database" # liftError
 
 getState :: Aff AppState
-getState = do
-  conn <- connection
+getState = withConnection $ \conn -> do
   ingredients <- execQuery conn $ selectFrom ingredient pure
   serializedRecords <- execQuery conn $ selectFrom appState pure 
   serialized <- Array.head serializedRecords # note "No appState record found in the database" # liftError
   decodeAppState (List.fromFoldable ingredients) serialized
 
 setState :: AppState -> Aff Unit
-setState state = do
-  conn <- connection
+setState state = withConnection $ \conn -> do
   let stateRecord = encodeAppState state
   execUpdate conn appState (const $ Selda.lit true)  
     (const {name: Selda.lit stateRecord.name, ingredients: Selda.lit stateRecord.ingredients}) 
