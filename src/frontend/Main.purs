@@ -10,8 +10,8 @@ import Data.Argonaut (printJsonDecodeError)
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..), (:))
 import Data.List as List
-import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, routeStr, submitRecipesRoute)
-import Recipes.DataStructures (AppState(..), Ingredient, StoreItem, decodeAppState)
+import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, routeStr, setItemStatusRoute, submitRecipesRoute)
+import Recipes.DataStructures (AppState(..), Ingredient, decodeAppState)
 import Recipes.ErrorHandling (throw)
 import Web.HTML (window)
 import Web.HTML.Location (reload)
@@ -39,18 +39,18 @@ recipeList :: ∀ f. Traversable f => f String -> Widget HTML String
 recipeList allRecipes = 
   fold (allRecipes <#> \recipe -> div' [input [Props._type "checkbox", Props.onChange $> recipe] <|> text recipe])
 
-data RecipeSelection = AnotherSelection String | Submit
+data RecipeSelection = AnotherRecipe String | SubmitRecipes
 selectedRecipes :: ∀ f. Traversable f => f String -> List String -> Widget HTML $ List String
 selectedRecipes allRecipes selectedRecipesSoFar = do
   selection <- 
     fold
-      [ recipeList allRecipes <#> AnotherSelection
-      , div' [button [Props.onClick] [text "Submit"]] $> Submit
+      [ recipeList allRecipes <#> AnotherRecipe
+      , div' [button [Props.onClick] [text "Submit"]] $> SubmitRecipes
       ]
 
   case selection of 
-    Submit -> pure selectedRecipesSoFar
-    AnotherSelection recipe -> selectedRecipes allRecipes $ updateSelection recipe
+    SubmitRecipes -> pure selectedRecipesSoFar
+    AnotherRecipe recipe -> selectedRecipes allRecipes $ updateSelection recipe
 
   where 
     updateSelection nextSelected = 
@@ -79,15 +79,34 @@ inputRecipes = do
   liftAff $ submitRecipes selected
   liftEffect (window >>= location >>= reload)
 
-groceryList :: List StoreItem -> Widget HTML Unit
-groceryList items = do 
-  -- , Props.onChange $> name
-  ( fold (items <#> \{amount, ingredient:{name}} -> div' [input [Props._type "checkbox"] <|> text (i amount" "name)])
-  <> div' [button [Props.onClick] [text "Restart"]] $> unit
-  )
+groceryListItem :: SetItemStatusValue -> Widget HTML SetItemStatusValue
+groceryListItem storeItem = do
+  changeEvent <- 
+    ( div' [input [Props._type "checkbox", Props.onChange, Props.checked storeItem.checked] 
+    <> text (i storeItem.item.amount" "storeItem.item.ingredient.name)]
+    )
+  
+  pure $ storeItem { checked = not storeItem.checked }
 
-  liftAff resetState
-  liftEffect (window >>= location >>= reload)
+data StoreItemSelection = AnotherItem SetItemStatusValue | ResetStoreList
+groceryList :: List SetItemStatusValue -> Widget HTML Unit
+groceryList items = do 
+  action <- 
+    ( fold (items <#> (\item -> groceryListItem item <#> AnotherItem))
+    <> (div' [button [Props.onClick] [text "Restart"]] $> ResetStoreList)
+    )
+
+  case action of 
+    ResetStoreList -> do
+      liftAff resetState
+      liftEffect (window >>= location >>= reload)
+      groceryList items 
+
+    AnotherItem item -> do
+      liftAff $ checkItem item
+      let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == item.item.ingredient.name then item else oldItem
+      groceryList updatedItems
+
 
   where 
     resetState = do 
@@ -97,13 +116,25 @@ groceryList items = do
       then pure unit
       else throw (i"status "(show $ unwrap resp.status)"." :: String)
 
+    checkItem item = do
+      tryResp <- request $ defaultRequest 
+        { method = Left POST, url = routeStr setItemStatusRoute, responseFormat = ResponseFormat.string 
+        , content = Just $ RequestBody.Json $ encodeJson item
+        }
+
+      resp <- tryResp # lmap printError # liftError
+      if between 200 299 $ unwrap resp.status 
+      then pure unit
+      else throw (i"status "(show $ unwrap resp.status)". "(resp.body) :: String)
+
+
 content :: Widget HTML Unit
 content = do
   appState <- (text "Loading..." <|> liftAff loadState)
   case appState of 
     InputRecipes -> inputRecipes
-    CheckKitchen ingredients -> groceryList ingredients
-    BuyGroceries ingredients -> groceryList ingredients
+    CheckKitchen ingredients -> groceryList (ingredients <#> {checked: false, item: _})
+    BuyGroceries ingredients -> groceryList (ingredients <#> {checked: false, item: _})
 
 main :: Effect Unit
 main = runWidgetInDom "contents" content

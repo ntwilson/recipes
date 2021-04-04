@@ -4,12 +4,12 @@ import Backend.Prelude
 
 import Data.Argonaut as Json
 import Data.Array as Array
-import Data.List (List)
+import Data.List (List, (:))
 import Data.List as List
 import HTTPure as HTTPure
 import HTTPure.Method (Method(..))
 import Node.Encoding (Encoding(..))
-import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, submitRecipesRoute)
+import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitRecipesRoute)
 import Recipes.Backend.DB (appState, connection, execQuery, execUpdate, ingredient, recipe, recipeIngredients)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 import Recipes.DataStructures (AppState(..), Ingredient, RecipeIngredients, SerializedAppState, decodeAppState, encodeAppState)
@@ -37,18 +37,18 @@ router dist rqst =
       contents <- encodeJson <$> allIngredients
       HTTPure.ok $ Json.stringify contents
 
-    rtr Post route 
-      | route == submitRecipesRoute 
-      , Right json <- Json.parseJson rqst.body
-      , Right (submittedRecipes :: List String) <- decodeJson json = do
-        pairings <- allRecipeIngredients
-        ingredients <- allIngredients
-        let groceryList = recipesToIngredients pairings ingredients submittedRecipes
-        setState (CheckKitchen groceryList)
-        HTTPure.ok "success"
-      
-      | otherwise = 
-        HTTPure.badRequest "Could not parse request body"
+    rtr Post route | route == submitRecipesRoute = go 
+      where 
+        go
+          | Right json <- Json.parseJson rqst.body
+          , Right (submittedRecipes :: List String) <- decodeJson json = do
+            pairings <- allRecipeIngredients
+            ingredients <- allIngredients
+            let groceryList = recipesToIngredients pairings ingredients submittedRecipes
+            setState (CheckKitchen groceryList)
+            HTTPure.noContent
+          
+          | otherwise = HTTPure.badRequest "Could not parse request body"
 
     rtr Get route | route == currentStateRoute = do
       state <- getSerializedState
@@ -56,7 +56,29 @@ router dist rqst =
 
     rtr Get route | route == resetStateRoute = do
       setState InputRecipes
-      HTTPure.ok "success"
+      HTTPure.noContent
+
+    rtr Post route | route == setItemStatusRoute = go
+      where
+        go 
+          | Right json <- Json.parseJson rqst.body
+          , Right (submittedItem :: SetItemStatusValue) <- decodeJson json = do
+            state <- getState 
+            case state of 
+              InputRecipes -> HTTPure.conflict "No items can or will exist until recipes are input."
+              CheckKitchen items -> do
+                setState $ CheckKitchen $ processItem submittedItem items
+                HTTPure.noContent 
+              BuyGroceries items -> do
+                setState $ CheckKitchen $ processItem submittedItem items
+                HTTPure.noContent
+
+          | otherwise = HTTPure.badRequest "Could not parse request body"
+        
+        processItem { checked, item: submittedItem } items 
+          | checked = List.filter (_.ingredient.name >>> (/=) submittedItem.ingredient.name) items
+          | otherwise = submittedItem : items
+
 
     rtr _ _ = HTTPure.notFound
     
