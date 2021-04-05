@@ -6,15 +6,18 @@ exports.newClient = function(connInfo) {
   }
 }
 
-exports.connect = function(client) {
-  return function () {
-    client.connect();
-    return client;
+exports.connect = function(promiseToAff) {
+  return function(client) {
+    return function () {
+      return promiseToAff(client.connect().then(function() { return client; }));
+    }
   }
 }
 
-exports.disconnect = function(client) {
-  return function () { 
-    client.end();
+exports.disconnect = function(promiseToAff) {
+  return function(client) {
+    return function () { 
+      return promiseToAff(client.end());
+    }
   }
 }
