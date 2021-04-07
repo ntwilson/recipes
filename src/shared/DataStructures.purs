@@ -9,7 +9,6 @@ import Data.List (List(..))
 import Data.List as List
 import Data.String (Pattern(..), split)
 import Data.String as String
-import Recipes.ErrorHandling (throw)
 
 type Recipe = Record RecipeRow
 type RecipeRow =

@@ -16,6 +16,9 @@ submitRecipesRoute :: Array String
 submitRecipesRoute = ["api", "submitRecipes"]
 type SubmitRecipesValue = Array String
 
+submitPantryRoute :: Array String
+submitPantryRoute = ["api", "submitPantry"]
+
 setItemStatusRoute :: Array String
 setItemStatusRoute = ["api", "setItemStatus"]
 type SetItemStatusValue = { checked :: Boolean, item :: StoreItem }

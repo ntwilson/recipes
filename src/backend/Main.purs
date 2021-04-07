@@ -9,7 +9,7 @@ import Data.List as List
 import HTTPure as HTTPure
 import HTTPure.Method (Method(..))
 import Node.Encoding (Encoding(..))
-import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitRecipesRoute)
+import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitPantryRoute, submitRecipesRoute)
 import Recipes.Backend.DB (appState, withConnection, execQuery, execUpdate, ingredient, recipe, recipeIngredients)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 import Recipes.DataStructures (AppState(..), Ingredient, RecipeIngredients, SerializedAppState, decodeAppState, encodeAppState)
@@ -58,6 +58,14 @@ router dist rqst =
       setState InputRecipes
       HTTPure.noContent
 
+    rtr Get route | route == submitPantryRoute = do
+      state <- getState
+      case state of 
+        CheckKitchen items -> do
+          setState $ BuyGroceries items
+          HTTPure.noContent
+        _ -> HTTPure.conflict "No items can or will exist until recipes are input."
+
     rtr Post route | route == setItemStatusRoute = go
       where
         go 
@@ -70,7 +78,7 @@ router dist rqst =
                 setState $ CheckKitchen $ processItem submittedItem items
                 HTTPure.noContent 
               BuyGroceries items -> do
-                setState $ CheckKitchen $ processItem submittedItem items
+                setState $ BuyGroceries $ processItem submittedItem items
                 HTTPure.noContent
 
           | otherwise = HTTPure.badRequest "Could not parse request body"
