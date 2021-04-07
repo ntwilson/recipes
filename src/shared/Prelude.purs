@@ -1,4 +1,4 @@
-module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, (<$$>), (<##>)) where
+module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, (<$$>), (<##>), equating) where
 
 import Prelude
 
@@ -26,6 +26,9 @@ doubleMap = map <<< map
 
 revDoubleMap :: ∀ fOuter fInner a b. Functor fOuter => Functor fInner => fOuter (fInner a) -> (a -> b) -> fOuter (fInner b)
 revDoubleMap = flip doubleMap
+
+equating :: ∀ a b. Eq b => (a -> b) -> a -> a -> Boolean
+equating projection a b = projection a == projection b
 
 infixr 4 doubleMap as <$$>
 infixl 1 revDoubleMap as <##>

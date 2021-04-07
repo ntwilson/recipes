@@ -21,7 +21,7 @@ recipesToIngredients recipeIngredients allIngredients recipes = aggregatedIngred
     groupedIngredients = 
       totalIngredients 
       # List.sortBy (comparing _.ingredient) 
-      # List.groupBy (\a b -> a.ingredient == b.ingredient)
+      # List.groupBy (equating _.ingredient)
       <#> \group -> {ingredient: (NEList.head group).ingredient, amounts: group}
 
     aggregatedIngredients = 
@@ -37,7 +37,7 @@ aggregateGroup :: ∀ r. NonEmptyList { quantity::Number, units::Maybe String | 
 aggregateGroup ingredients = 
   ingredients 
   # NEList.sortBy (comparing _.units)
-  # NEList.groupBy (\a b -> a.units == b.units)
+  # NEList.groupBy (equating _.units)
   <#> (unwrap >>> foldl1 (\a b -> a { quantity = a.quantity + b.quantity }))
   <#> (\{quantity, units} -> i(show quantity)(maybe "" (" " <> _) units))
   # intercalate ", "

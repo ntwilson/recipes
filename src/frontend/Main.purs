@@ -10,6 +10,8 @@ import Data.Argonaut (printJsonDecodeError)
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..), (:))
 import Data.List as List
+import Data.List.NonEmpty as NEList
+import Data.List.Types (NonEmptyList)
 import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, routeStr, setItemStatusRoute, submitRecipesRoute)
 import Recipes.DataStructures (AppState(..), Ingredient, decodeAppState)
 import Recipes.ErrorHandling (throw)
@@ -45,6 +47,7 @@ selectedRecipes allRecipes selectedRecipesSoFar = do
   selection <- 
     fold
       [ recipeList allRecipes <#> AnotherRecipe
+      , br'
       , div' [button [Props.onClick] [text "Submit"]] $> SubmitRecipes
       ]
 
@@ -89,10 +92,35 @@ groceryListItem storeItem = do
   pure $ storeItem { checked = not storeItem.checked }
 
 data StoreItemSelection = AnotherItem SetItemStatusValue | ResetStoreList
+
+sectionList :: NonEmptyList SetItemStatusValue -> Widget HTML SetItemStatusValue
+sectionList itemsBySection = 
+  h4' [text section]
+  <>
+  fold (itemsBySection <#> groceryListItem)
+  
+  where 
+    section = fromMaybe "Misc." (NEList.head itemsBySection).item.ingredient.section 
+
+storeList :: NonEmptyList SetItemStatusValue -> Widget HTML SetItemStatusValue
+storeList itemsByStore = 
+  h3' [text store]
+  <>
+  fold (bySection (NEList.toList itemsByStore) <#> sectionList)
+
+  where
+    store = (NEList.head itemsByStore).item.ingredient.store
+
+    bySection :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
+    bySection = 
+      List.sortBy (comparing _.item.ingredient.section)
+      >>> List.groupBy (equating _.item.ingredient.section)
+
 groceryList :: List SetItemStatusValue -> Widget HTML Unit
 groceryList items = do 
   action <- 
-    ( fold (items <#> (\item -> groceryListItem item <#> AnotherItem))
+    ( fold (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> AnotherItem))
+    <> br'
     <> (div' [button [Props.onClick] [text "Restart"]] $> ResetStoreList)
     )
 
@@ -126,6 +154,11 @@ groceryList items = do
       if between 200 299 $ unwrap resp.status 
       then pure unit
       else throw (i"status "(show $ unwrap resp.status)". "(resp.body) :: String)
+
+    byStore :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
+    byStore = 
+      List.sortBy (comparing _.item.ingredient.store)
+      >>> List.groupBy (equating _.item.ingredient.store)
 
 
 content :: Widget HTML Unit

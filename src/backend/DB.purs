@@ -22,8 +22,8 @@ import Selda.PG.Utils (class ColsToPGHandler, class TableToColsWithoutAlias)
 
 data Client 
 foreign import newClient :: ∀ a. Record a -> Effect Client
-foreign import connect :: (Promise ~> Aff) -> Client -> Effect $ Aff Connection
-foreign import disconnect :: (Promise ~> Aff) -> Connection -> Effect $ Aff Unit
+foreign import connect :: Client -> Effect $ Promise Connection
+foreign import disconnect :: Connection -> Effect $ Promise Unit
 
 
 connection :: ∀ eff. MonadAff eff => eff Connection
@@ -33,13 +33,13 @@ connection = do
   then do
     connectionString <- fromMaybe "" <$> env "DATABASE_URL"
     client <- liftAff $ liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
-    liftAff $ (join $ liftEffect $ connect Promise.toAff client)
+    liftAff $ (join $ liftEffect $ Promise.toAff <$> connect client)
   else do
     database <- fromMaybe "recipes" <$> env "DATABASE_NAME"
     user <- fromMaybe "" <$> env "DATABASE_USER"
     password <- fromMaybe "" <$> env "DATABASE_PASSWORD"
     client <- liftAff $ liftEffect $ newClient { user, database, password }
-    liftAff $ (join $ liftEffect $ connect Promise.toAff client)
+    liftAff $ (join $ liftEffect $ Promise.toAff <$> connect client)
   
   where
     env = liftEffect <<< lookupEnv
@@ -48,7 +48,7 @@ withConnection :: ∀ eff a. MonadAff eff => (Connection -> eff a) -> eff a
 withConnection action = do
   conn <- connection
   ans <- action conn
-  liftAff $ (join $ liftEffect $ disconnect Promise.toAff conn)
+  liftAff $ (join $ liftEffect $ Promise.toAff <$> disconnect conn)
   pure ans
 
 execQuery ∷ ∀ o i tup s

@@ -23,7 +23,7 @@ router dist rqst =
   where
     rtr Get [] = do
       contents <- readTextFile UTF8 (i dist"/index.html")
-      HTTPure.ok' (HTTPure.header "Content-Type" "text/html; charset=UTF-7") contents
+      HTTPure.ok' (HTTPure.header "Content-Type" "text/html; charset=UTF-8") contents
 
     rtr Get ["main.js"] = do
       contents <- readTextFile UTF8 (i dist"/main.js")
