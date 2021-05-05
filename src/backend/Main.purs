@@ -6,6 +6,7 @@ import Data.Argonaut as Json
 import Data.Array as Array
 import Data.List (List(..), (:))
 import Data.List as List
+import Data.String.CaseInsensitive (CaseInsensitiveString(..))
 import HTTPure as HTTPure
 import HTTPure.Method (Method(..))
 import Node.Encoding (Encoding(..))
@@ -95,13 +96,36 @@ router dist rqst =
             state <- getState
             case state of
               BuyGroceries items custom -> do
-                setState $ BuyGroceries items (addItem submittedItem custom)
+                setState $ BuyGroceries items (addItem submittedItem items custom)
                 HTTPure.noContent
               _ -> HTTPure.conflict "The application is not in a state such that adding items is permitted."
 
           | otherwise = HTTPure.badRequest "Could not parse request body"
 
-        addItem ingredient items = { ingredient, amount: "" } : items
+        addItem ingredient normalItems customItems = { ingredient: corrected, amount: "" } : customItems
+          where
+            corrected = correctItem (normalItems <#> _.ingredient) (customItems <#> _.ingredient) ingredient
+
+        correctItem :: List AddItemValue -> List AddItemValue -> AddItemValue -> AddItemValue 
+        correctItem existingItems existingCustom newCustom = newCustom { store = correctedStore, section = correctedSection }
+          where 
+            correctedStore = case List.find (\{store: existingStore} -> equating CaseInsensitiveString existingStore newCustom.store) allExisting of
+              Just existingItem -> existingItem.store
+              Nothing -> newCustom.store
+
+            correctedSection = case newCustom.section of
+              Nothing -> Nothing
+              Just customSection 
+                | Just existingSection <- List.findMap (sameSection customSection) allExisting -> Just existingSection
+                | otherwise -> Just customSection
+
+            sameSection custSection {section: Nothing} = Nothing
+            sameSection custSection {section: Just existingSection} 
+              | equating CaseInsensitiveString existingSection custSection = Just existingSection
+              | otherwise = Nothing
+
+            allExisting = existingItems <> existingCustom
+
 
 
     rtr _ _ = HTTPure.notFound
