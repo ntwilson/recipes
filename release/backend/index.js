@@ -1671,6 +1671,19 @@ var PS = {};
   var foldMap = function (dict) {
       return dict.foldMap;
   };
+  var findMap = function (dictFoldable) {
+      return function (p) {
+          var go = function (v) {
+              return function (v1) {
+                  if (v instanceof Data_Maybe.Nothing) {
+                      return p(v1);
+                  };
+                  return v;
+              };
+          };
+          return foldl(dictFoldable)(go)(Data_Maybe.Nothing.value);
+      };
+  };
   var find = function (dictFoldable) {
       return function (p) {
           var go = function (v) {
@@ -1718,6 +1731,7 @@ var PS = {};
   exports["elem"] = elem;
   exports["notElem"] = notElem;
   exports["find"] = find;
+  exports["findMap"] = findMap;
   exports["foldableArray"] = foldableArray;
 })(PS);
 (function($PS) {
@@ -21084,6 +21098,8 @@ var PS = {};
           return Data_Ord.compare(Data_Ord.ordString)(Data_String_Common.toLower(v))(Data_String_Common.toLower(v1));
       };
   });
+  exports["CaseInsensitiveString"] = CaseInsensitiveString;
+  exports["eqCaseInsensitiveString"] = eqCaseInsensitiveString;
   exports["ordCaseInsensitiveString"] = ordCaseInsensitiveString;
   exports["newtypeCaseInsensitiveString"] = newtypeCaseInsensitiveString;
 })(PS);
@@ -27368,7 +27384,9 @@ var PS = {};
   var Data_List = $PS["Data.List"];
   var Data_List_Types = $PS["Data.List.Types"];
   var Data_Maybe = $PS["Data.Maybe"];
+  var Data_Semigroup = $PS["Data.Semigroup"];
   var Data_Show = $PS["Data.Show"];
+  var Data_String_CaseInsensitive = $PS["Data.String.CaseInsensitive"];
   var Data_Symbol = $PS["Data.Symbol"];
   var Database_PostgreSQL_Row = $PS["Database.PostgreSQL.Row"];
   var Database_PostgreSQL_Value = $PS["Database.PostgreSQL.Value"];
@@ -27700,15 +27718,15 @@ var PS = {};
                               if (Data_Boolean.otherwise) {
                                   return HTTPure_Response.badRequest(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("Could not parse request body");
                               };
-                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 20, column 1 - line 20, column 57): " + [  ]);
+                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 21, column 1 - line 21, column 57): " + [  ]);
                           };
-                          var $17 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
-                          if ($17 instanceof Data_Either.Right) {
-                              var $18 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeList(Data_Argonaut_Decode_Class.decodeJsonString))($17.value0);
-                              if ($18 instanceof Data_Either.Right) {
+                          var $25 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
+                          if ($25 instanceof Data_Either.Right) {
+                              var $26 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeList(Data_Argonaut_Decode_Class.decodeJsonString))($25.value0);
+                              if ($26 instanceof Data_Either.Right) {
                                   return Control_Bind.bind(Effect_Aff.bindAff)(allRecipeIngredients)(function (pairings) {
                                       return Control_Bind.bind(Effect_Aff.bindAff)(allIngredients)(function (ingredients) {
-                                          var groceryList = Recipes_RecipesToIngredients.recipesToIngredients(pairings)(ingredients)($18.value0);
+                                          var groceryList = Recipes_RecipesToIngredients.recipesToIngredients(pairings)(ingredients)($26.value0);
                                           return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.CheckKitchen(groceryList)))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
@@ -27750,18 +27768,18 @@ var PS = {};
                           return function (items) {
                               if (v2.checked) {
                                   return Data_List.filter((function () {
-                                      var $42 = Data_Eq.notEq(Data_Eq.eqString)(v2.item.ingredient.name);
-                                      return function ($43) {
-                                          return $42((function (v3) {
+                                      var $66 = Data_Eq.notEq(Data_Eq.eqString)(v2.item.ingredient.name);
+                                      return function ($67) {
+                                          return $66((function (v3) {
                                               return v3.ingredient.name;
-                                          })($43));
+                                          })($67));
                                       };
                                   })())(items);
                               };
                               if (Data_Boolean.otherwise) {
                                   return new Data_List_Types.Cons(v2.item, items);
                               };
-                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 86, column 9 - line 88, column 46): " + [ v2.constructor.name, items.constructor.name ]);
+                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 87, column 9 - line 89, column 46): " + [ v2.constructor.name, items.constructor.name ]);
                           };
                       };
                       var go = (function () {
@@ -27769,11 +27787,11 @@ var PS = {};
                               if (Data_Boolean.otherwise) {
                                   return HTTPure_Response.badRequest(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("Could not parse request body");
                               };
-                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 20, column 1 - line 20, column 57): " + [  ]);
+                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 21, column 1 - line 21, column 57): " + [  ]);
                           };
-                          var $27 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
-                          if ($27 instanceof Data_Either.Right) {
-                              var $28 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
+                          var $35 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
+                          if ($35 instanceof Data_Either.Right) {
+                              var $36 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
                                   return "store";
                               }))()())(new Data_Symbol.IsSymbol(function () {
                                   return "section";
@@ -27789,23 +27807,23 @@ var PS = {};
                                   return "item";
                               }))()())(new Data_Symbol.IsSymbol(function () {
                                   return "checked";
-                              }))()())())($27.value0);
-                              if ($28 instanceof Data_Either.Right) {
+                              }))()())())($35.value0);
+                              if ($36 instanceof Data_Either.Right) {
                                   return Control_Bind.bind(Effect_Aff.bindAff)(getState)(function (state) {
                                       if (state instanceof Recipes_DataStructures.InputRecipes) {
                                           return HTTPure_Response.conflict(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("No items can or will exist until recipes are input.");
                                       };
                                       if (state instanceof Recipes_DataStructures.CheckKitchen) {
-                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(Recipes_DataStructures.CheckKitchen.create(processItem($28.value0)(state.value0))))(function () {
+                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(Recipes_DataStructures.CheckKitchen.create(processItem($36.value0)(state.value0))))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
                                       };
                                       if (state instanceof Recipes_DataStructures.BuyGroceries) {
-                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(processItem($28.value0)(state.value0), processItem($28.value0)(state.value1))))(function () {
+                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(processItem($36.value0)(state.value0), processItem($36.value0)(state.value1))))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
                                       };
-                                      throw new Error("Failed pattern match at Recipes.Backend.Main (line 75, column 13 - line 82, column 34): " + [ state.constructor.name ]);
+                                      throw new Error("Failed pattern match at Recipes.Backend.Main (line 76, column 13 - line 83, column 34): " + [ state.constructor.name ]);
                                   });
                               };
                               return v2(true);
@@ -27815,12 +27833,79 @@ var PS = {};
                       return go;
                   };
                   if (v instanceof HTTPure_Method.Post && Data_Eq.eq(Data_Eq.eqArray(Data_Eq.eqString))(v1)(Recipes_API.addItemRoute)) {
+                      var correctItem = function (existingItems) {
+                          return function (existingCustom) {
+                              return function (newCustom) {
+                                  var sameSection = function (custSection) {
+                                      return function (v2) {
+                                          if (v2.section instanceof Data_Maybe.Nothing) {
+                                              return Data_Maybe.Nothing.value;
+                                          };
+                                          if (v2.section instanceof Data_Maybe.Just) {
+                                              if (Shared_Prelude.equating(Data_String_CaseInsensitive.eqCaseInsensitiveString)(Data_String_CaseInsensitive.CaseInsensitiveString)(v2.section.value0)(custSection)) {
+                                                  return new Data_Maybe.Just(v2.section.value0);
+                                              };
+                                              if (Data_Boolean.otherwise) {
+                                                  return Data_Maybe.Nothing.value;
+                                              };
+                                          };
+                                          throw new Error("Failed pattern match at Recipes.Backend.Main (line 122, column 13 - line 122, column 65): " + [ custSection.constructor.name, v2.constructor.name ]);
+                                      };
+                                  };
+                                  var allExisting = Data_Semigroup.append(Data_List_Types.semigroupList)(existingItems)(existingCustom);
+                                  var correctedSection = (function () {
+                                      if (newCustom.section instanceof Data_Maybe.Nothing) {
+                                          return Data_Maybe.Nothing.value;
+                                      };
+                                      var v2 = function (v3) {
+                                          if (newCustom.section instanceof Data_Maybe.Just && Data_Boolean.otherwise) {
+                                              return new Data_Maybe.Just(newCustom.section.value0);
+                                          };
+                                          throw new Error("Failed pattern match at Recipes.Backend.Main (line 21, column 1 - line 21, column 57): " + [ newCustom.section.constructor.name ]);
+                                      };
+                                      if (newCustom.section instanceof Data_Maybe.Just) {
+                                          var $52 = Data_Foldable.findMap(Data_List_Types.foldableList)(sameSection(newCustom.section.value0))(allExisting);
+                                          if ($52 instanceof Data_Maybe.Just) {
+                                              return new Data_Maybe.Just($52.value0);
+                                          };
+                                          return v2(true);
+                                      };
+                                      return v2(true);
+                                  })();
+                                  var correctedStore = (function () {
+                                      var v2 = Data_Foldable.find(Data_List_Types.foldableList)(function (v3) {
+                                          return Shared_Prelude.equating(Data_String_CaseInsensitive.eqCaseInsensitiveString)(Data_String_CaseInsensitive.CaseInsensitiveString)(v3.store)(newCustom.store);
+                                      })(allExisting);
+                                      if (v2 instanceof Data_Maybe.Just) {
+                                          return v2.value0.store;
+                                      };
+                                      if (v2 instanceof Data_Maybe.Nothing) {
+                                          return newCustom.store;
+                                      };
+                                      throw new Error("Failed pattern match at Recipes.Backend.Main (line 112, column 30 - line 114, column 41): " + [ v2.constructor.name ]);
+                                  })();
+                                  return {
+                                      name: newCustom.name,
+                                      store: correctedStore,
+                                      section: correctedSection,
+                                      common: newCustom.common
+                                  };
+                              };
+                          };
+                      };
                       var addItem = function (ingredient) {
-                          return function (items) {
-                              return new Data_List_Types.Cons({
-                                  ingredient: ingredient,
-                                  amount: ""
-                              }, items);
+                          return function (normalItems) {
+                              return function (customItems) {
+                                  var corrected = correctItem(Data_Functor.mapFlipped(Data_List_Types.functorList)(normalItems)(function (v2) {
+                                      return v2.ingredient;
+                                  }))(Data_Functor.mapFlipped(Data_List_Types.functorList)(customItems)(function (v2) {
+                                      return v2.ingredient;
+                                  }))(ingredient);
+                                  return new Data_List_Types.Cons({
+                                      ingredient: corrected,
+                                      amount: ""
+                                  }, customItems);
+                              };
                           };
                       };
                       var go = (function () {
@@ -27828,11 +27913,11 @@ var PS = {};
                               if (Data_Boolean.otherwise) {
                                   return HTTPure_Response.badRequest(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("Could not parse request body");
                               };
-                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 20, column 1 - line 20, column 57): " + [  ]);
+                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 21, column 1 - line 21, column 57): " + [  ]);
                           };
-                          var $35 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
-                          if ($35 instanceof Data_Either.Right) {
-                              var $36 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
+                          var $59 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
+                          if ($59 instanceof Data_Either.Right) {
+                              var $60 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
                                   return "store";
                               }))()())(new Data_Symbol.IsSymbol(function () {
                                   return "section";
@@ -27840,11 +27925,11 @@ var PS = {};
                                   return "name";
                               }))()())(new Data_Symbol.IsSymbol(function () {
                                   return "common";
-                              }))()())())($35.value0);
-                              if ($36 instanceof Data_Either.Right) {
+                              }))()())())($59.value0);
+                              if ($60 instanceof Data_Either.Right) {
                                   return Control_Bind.bind(Effect_Aff.bindAff)(getState)(function (state) {
                                       if (state instanceof Recipes_DataStructures.BuyGroceries) {
-                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(state.value0, addItem($36.value0)(state.value1))))(function () {
+                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(state.value0, addItem($60.value0)(state.value0)(state.value1))))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
                                       };
@@ -27875,9 +27960,9 @@ var PS = {};
           };
       };
       var env = (function () {
-          var $44 = Effect_Class.liftEffect(Effect_Aff.monadEffectAff);
-          return function ($45) {
-              return $44(Node_Process.lookupEnv($45));
+          var $68 = Effect_Class.liftEffect(Effect_Aff.monadEffectAff);
+          return function ($69) {
+              return $68(Node_Process.lookupEnv($69));
           };
       })();
       return Effect_Aff.launchAff_(Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(Recipes_Backend_ServerSetup.loadEnv)(function () {
