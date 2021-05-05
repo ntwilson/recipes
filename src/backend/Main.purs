@@ -4,12 +4,12 @@ import Backend.Prelude
 
 import Data.Argonaut as Json
 import Data.Array as Array
-import Data.List (List, (:))
+import Data.List (List(..), (:))
 import Data.List as List
 import HTTPure as HTTPure
 import HTTPure.Method (Method(..))
 import Node.Encoding (Encoding(..))
-import Recipes.API (RecipesValue, SetItemStatusValue, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitPantryRoute, submitRecipesRoute)
+import Recipes.API (RecipesValue, SetItemStatusValue, AddItemValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitPantryRoute, submitRecipesRoute)
 import Recipes.Backend.DB (appState, withConnection, execQuery, execUpdate, ingredient, recipe, recipeIngredients)
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 import Recipes.DataStructures (AppState(..), Ingredient, RecipeIngredients, SerializedAppState, decodeAppState, encodeAppState)
@@ -62,7 +62,7 @@ router dist rqst =
       state <- getState
       case state of 
         CheckKitchen items -> do
-          setState $ BuyGroceries items
+          setState $ BuyGroceries items Nil
           HTTPure.noContent
         _ -> HTTPure.conflict "No items can or will exist until recipes are input."
 
@@ -77,8 +77,8 @@ router dist rqst =
               CheckKitchen items -> do
                 setState $ CheckKitchen $ processItem submittedItem items
                 HTTPure.noContent 
-              BuyGroceries items -> do
-                setState $ BuyGroceries $ processItem submittedItem items
+              BuyGroceries items custom -> do
+                setState $ BuyGroceries (processItem submittedItem items) (processItem submittedItem custom)
                 HTTPure.noContent
 
           | otherwise = HTTPure.badRequest "Could not parse request body"
@@ -86,6 +86,22 @@ router dist rqst =
         processItem { checked, item: submittedItem } items 
           | checked = List.filter (_.ingredient.name >>> (/=) submittedItem.ingredient.name) items
           | otherwise = submittedItem : items
+
+    rtr Post route | route == addItemRoute = go 
+      where 
+        go 
+          | Right json <- Json.parseJson rqst.body 
+          , Right (submittedItem :: AddItemValue) <- decodeJson json = do
+            state <- getState
+            case state of
+              BuyGroceries items custom -> do
+                setState $ BuyGroceries items (addItem submittedItem custom)
+                HTTPure.noContent
+              _ -> HTTPure.conflict "The application is not in a state such that adding items is permitted."
+
+          | otherwise = HTTPure.badRequest "Could not parse request body"
+
+        addItem ingredient items = { ingredient, amount: "" } : items
 
 
     rtr _ _ = HTTPure.notFound

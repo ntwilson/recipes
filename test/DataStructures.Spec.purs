@@ -31,7 +31,7 @@ spec = do
       decode ingredients {name: "check kitchen", ingredients: Just "1 cup:rice;2 cakes:noodles;1:chicken"} 
         `shouldEqual` (Right $ CheckKitchen ({ingredient:rice, amount:"1 cup"} : {ingredient:noodles, amount:"2 cakes"} : {ingredient:chicken, amount:"1"} : Nil))
       decode ingredients {name: "buy groceries", ingredients: Just "1 cup:rice;2 cakes:noodles;1:chicken"} 
-        `shouldEqual` (Right $ BuyGroceries ({ingredient:rice, amount:"1 cup"} : {ingredient:noodles, amount:"2 cakes"} : {ingredient:chicken, amount:"1"} : Nil))
+        `shouldEqual` (Right $ BuyGroceries ({ingredient:rice, amount:"1 cup"} : {ingredient:noodles, amount:"2 cakes"} : {ingredient:chicken, amount:"1"} : Nil) Nil)
 
     it "throws errors when there's a problem decoding" do
       decode ingredients {name: "unknown", ingredients: Nothing} `shouldSatisfy` isLeft
@@ -45,4 +45,4 @@ spec = do
       roundTripTest InputRecipes 
       roundTripTest (CheckKitchen ({ingredient:rice, amount:"1 cup"} : {ingredient:chicken, amount:"1"} : {ingredient:noodles, amount:"2 cakes"} : Nil))
       roundTripTest (CheckKitchen Nil)
-      roundTripTest (BuyGroceries ({ingredient:rice, amount:"1 cup"} : Nil))
+      roundTripTest (BuyGroceries ({ingredient:rice, amount:"1 cup"} : Nil) Nil)

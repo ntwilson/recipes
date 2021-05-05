@@ -23,6 +23,10 @@ setItemStatusRoute :: Array String
 setItemStatusRoute = ["api", "setItemStatus"]
 type SetItemStatusValue = { checked :: Boolean, item :: StoreItem }
 
+addItemRoute :: Array String
+addItemRoute = ["api", "addItem"]
+type AddItemValue = Ingredient
+
 currentStateRoute :: Array String
 currentStateRoute = ["api", "currentState"]
 type CurrentStateValue = SerializedAppState

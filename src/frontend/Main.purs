@@ -62,7 +62,7 @@ content = do
   case appState of 
     InputRecipes -> inputRecipes
     CheckKitchen ingredients -> pantryList (ingredients <#> {checked: false, item: _})
-    BuyGroceries ingredients -> groceryList (ingredients <#> {checked: false, item: _})
+    BuyGroceries ingredients custom -> groceryList ((ingredients <> custom) <#> {checked: false, item: _})
 
 main :: Effect Unit
 main = runWidgetInDom "contents" content
