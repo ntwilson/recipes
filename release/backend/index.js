@@ -5622,6 +5622,7 @@ var PS = {};
   var Control_Alt = $PS["Control.Alt"];
   var Control_Applicative = $PS["Control.Applicative"];
   var Control_Apply = $PS["Control.Apply"];
+  var Control_Bind = $PS["Control.Bind"];
   var Control_Lazy = $PS["Control.Lazy"];
   var Control_Monad_ST_Internal = $PS["Control.Monad.ST.Internal"];
   var Data_Array_ST = $PS["Data.Array.ST"];
@@ -5646,6 +5647,9 @@ var PS = {};
           return new Data_Maybe.Just(xs);
       };
   });
+  var singleton = function (a) {
+      return [ a ];
+  };
   var some = function (dictAlternative) {
       return function (dictLazy) {
           return function (v) {
@@ -5695,6 +5699,15 @@ var PS = {};
           });
       };
   };
+  var concatMap = Data_Function.flip(Control_Bind.bind(Control_Bind.bindArray));
+  var mapMaybe = function (f) {
+      return concatMap((function () {
+          var $94 = Data_Maybe.maybe([  ])(singleton);
+          return function ($95) {
+              return $94(f($95));
+          };
+      })());
+  };
   exports["fromFoldable"] = fromFoldable;
   exports["some"] = some;
   exports["many"] = many;
@@ -5702,6 +5715,7 @@ var PS = {};
   exports["tail"] = tail;
   exports["uncons"] = uncons;
   exports["elemIndex"] = elemIndex;
+  exports["mapMaybe"] = mapMaybe;
   exports["zip"] = zip;
   exports["unzip"] = unzip;
   exports["length"] = $foreign.length;
@@ -21176,6 +21190,12 @@ var PS = {};
       return s.substring(n);
     };
   };
+
+  exports.splitAt = function (i) {
+    return function (s) {
+      return { before: s.substring(0, i), after: s.substring(i) };
+    };
+  };
 })(PS["Data.String.CodeUnits"] = PS["Data.String.CodeUnits"] || {});
 (function(exports) {
   "use strict";
@@ -21211,9 +21231,20 @@ var PS = {};
           head: Data_String_Unsafe.charAt(0)(v),
           tail: $foreign.drop(1)(v)
       });
+  };
+  var stripPrefix = function (v) {
+      return function (str) {
+          var v1 = $foreign.splitAt($foreign.length(v))(str);
+          var $15 = v1.before === v;
+          if ($15) {
+              return new Data_Maybe.Just(v1.after);
+          };
+          return Data_Maybe.Nothing.value;
+      };
   };                                                                                                   
   var indexOf = $foreign["_indexOf"](Data_Maybe.Just.create)(Data_Maybe.Nothing.value);
   var charAt = $foreign["_charAt"](Data_Maybe.Just.create)(Data_Maybe.Nothing.value);
+  exports["stripPrefix"] = stripPrefix;
   exports["uncons"] = uncons;
   exports["indexOf"] = indexOf;
   exports["singleton"] = $foreign.singleton;
@@ -25574,11 +25605,13 @@ var PS = {};
   var recipesRoute = [ "api", "recipes" ];
   var ingredientsRoute = [ "api", "ingredients" ];
   var currentStateRoute = [ "api", "currentState" ];
+  var addItemRoute = [ "api", "addItem" ];
   exports["recipesRoute"] = recipesRoute;
   exports["ingredientsRoute"] = ingredientsRoute;
   exports["submitRecipesRoute"] = submitRecipesRoute;
   exports["submitPantryRoute"] = submitPantryRoute;
   exports["setItemStatusRoute"] = setItemStatusRoute;
+  exports["addItemRoute"] = addItemRoute;
   exports["currentStateRoute"] = currentStateRoute;
   exports["resetStateRoute"] = resetStateRoute;
 })(PS);
@@ -26915,6 +26948,8 @@ var PS = {};
   var Data_List_Types = $PS["Data.List.Types"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Data_Monoid = $PS["Data.Monoid"];
+  var Data_Semigroup = $PS["Data.Semigroup"];
+  var Data_String_CodeUnits = $PS["Data.String.CodeUnits"];
   var Data_String_Common = $PS["Data.String.Common"];
   var Data_Traversable = $PS["Data.Traversable"];
   var Recipes_ErrorHandling = $PS["Recipes.ErrorHandling"];                
@@ -26935,18 +26970,27 @@ var PS = {};
       return CheckKitchen;
   })();
   var BuyGroceries = (function () {
-      function BuyGroceries(value0) {
+      function BuyGroceries(value0, value1) {
           this.value0 = value0;
+          this.value1 = value1;
       };
       BuyGroceries.create = function (value0) {
-          return new BuyGroceries(value0);
+          return function (value1) {
+              return new BuyGroceries(value0, value1);
+          };
       };
       return BuyGroceries;
   })();
   var encodeIngredients = function (ingredients) {
-      return Data_Foldable.intercalate(Data_List_Types.foldableList)(Data_Monoid.monoidString)(";")(Data_Functor.mapFlipped(Data_List_Types.functorList)(ingredients)(function (v) {
-          return Data_Interpolate.i(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpString))))(v.amount)(":")(v.ingredient.name);
-      }));
+      return function (customItems) {
+          var encodedNormalIngredients = Data_Functor.mapFlipped(Data_List_Types.functorList)(ingredients)(function (v) {
+              return Data_Interpolate.i(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpString))))(v.amount)(":")(v.ingredient.name);
+          });
+          var encodedCustomIngredients = Data_Functor.mapFlipped(Data_List_Types.functorList)(customItems)(function (v) {
+              return Data_Interpolate.i(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpStringFunction(Data_Interpolate.interpString)))))))("CUSTOM::")(v.ingredient.name)(":")(v.ingredient.store)(":")(Data_Maybe.fromMaybe("")(v.ingredient.section));
+          });
+          return Data_Foldable.intercalate(Data_List_Types.foldableList)(Data_Monoid.monoidString)(";")(Data_Semigroup.append(Data_List_Types.semigroupList)(encodedNormalIngredients)(encodedCustomIngredients));
+      };
   };
   var encodeAppState = function (v) {
       if (v instanceof InputRecipes) {
@@ -26958,16 +27002,16 @@ var PS = {};
       if (v instanceof CheckKitchen) {
           return {
               name: "check kitchen",
-              ingredients: Data_Maybe.Just.create(encodeIngredients(v.value0))
+              ingredients: Data_Maybe.Just.create(encodeIngredients(v.value0)(Data_List_Types.Nil.value))
           };
       };
       if (v instanceof BuyGroceries) {
           return {
               name: "buy groceries",
-              ingredients: Data_Maybe.Just.create(encodeIngredients(v.value0))
+              ingredients: Data_Maybe.Just.create(encodeIngredients(v.value0)(v.value1))
           };
       };
-      throw new Error("Failed pattern match at Recipes.DataStructures (line 87, column 1 - line 87, column 49): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Recipes.DataStructures (line 110, column 1 - line 110, column 49): " + [ v.constructor.name ]);
   };
   var decodeStoreItem = function (dictThrows) {
       return function (allIngredients) {
@@ -26976,28 +27020,28 @@ var PS = {};
                   if (Data_Boolean.otherwise) {
                       return Recipes_ErrorHandling["throw"](dictThrows)("Unable to decode app state item " + item);
                   };
-                  throw new Error("Failed pattern match at Recipes.DataStructures (line 53, column 1 - line 53, column 88): " + [ allIngredients.constructor.name, item.constructor.name ]);
+                  throw new Error("Failed pattern match at Recipes.DataStructures (line 68, column 1 - line 68, column 88): " + [ allIngredients.constructor.name, item.constructor.name ]);
               };
-              var $46 = Data_String_Common.split(":")(item);
-              if ($46.length === 2) {
+              var $64 = Data_String_Common.split(":")(item);
+              if ($64.length === 2) {
                   var v1 = Data_Foldable.find(Data_List_Types.foldableList)((function () {
-                      var $58 = Data_Eq.eq(Data_Eq.eqString)($46[1]);
-                      return function ($59) {
-                          return $58((function (v2) {
+                      var $85 = Data_Eq.eq(Data_Eq.eqString)($64[1]);
+                      return function ($86) {
+                          return $85((function (v2) {
                               return v2.name;
-                          })($59));
+                          })($86));
                       };
                   })())(allIngredients);
                   if (v1 instanceof Data_Maybe.Just) {
                       return Control_Applicative.pure((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())({
-                          amount: $46[0],
+                          amount: $64[0],
                           ingredient: v1.value0
                       });
                   };
                   if (v1 instanceof Data_Maybe.Nothing) {
-                      return Recipes_ErrorHandling["throw"](dictThrows)("Unable to find the ingredient named " + $46[1]);
+                      return Recipes_ErrorHandling["throw"](dictThrows)("Unable to find the ingredient named " + $64[1]);
                   };
-                  throw new Error("Failed pattern match at Recipes.DataStructures (line 56, column 5 - line 58, column 72): " + [ v1.constructor.name ]);
+                  throw new Error("Failed pattern match at Recipes.DataStructures (line 71, column 5 - line 73, column 72): " + [ v1.constructor.name ]);
               };
               return v(true);
           };
@@ -27010,15 +27054,67 @@ var PS = {};
                   return Control_Applicative.pure((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(Data_List_Types.Nil.value);
               };
               if (v1 instanceof Data_Maybe.Just) {
-                  return Data_Functor.mapFlipped((((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Bind1()).Apply0()).Functor0())(Data_Traversable.traverse(Data_Traversable.traversableArray)((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(decodeStoreItem(dictThrows)(v))(Data_Array.filter((function () {
-                      var $60 = Data_HeytingAlgebra.not(Data_HeytingAlgebra.heytingAlgebraBoolean);
-                      return function ($61) {
-                          return $60(Data_String_Common["null"]($61));
+                  var startsWith = function (prefix) {
+                      var $87 = Data_String_CodeUnits.stripPrefix(prefix);
+                      return function ($88) {
+                          return Data_Maybe.isJust($87($88));
                       };
-                  })())(Data_String_Common.split(";")(v1.value0))))(Data_List.fromFoldable(Data_Foldable.foldableArray));
+                  };
+                  return Data_Functor.mapFlipped((((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Bind1()).Apply0()).Functor0())(Data_Traversable.traverse(Data_Traversable.traversableArray)((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(decodeStoreItem(dictThrows)(v))(Data_Array.filter((function () {
+                      var $89 = Data_HeytingAlgebra.not(Data_HeytingAlgebra.heytingAlgebraBoolean);
+                      var $90 = startsWith("CUSTOM::");
+                      return function ($91) {
+                          return $89($90($91));
+                      };
+                  })())(Data_Array.filter((function () {
+                      var $92 = Data_HeytingAlgebra.not(Data_HeytingAlgebra.heytingAlgebraBoolean);
+                      return function ($93) {
+                          return $92(Data_String_Common["null"]($93));
+                      };
+                  })())(Data_String_Common.split(";")(v1.value0)))))(Data_List.fromFoldable(Data_Foldable.foldableArray));
               };
-              throw new Error("Failed pattern match at Recipes.DataStructures (line 63, column 1 - line 63, column 102): " + [ v.constructor.name, v1.constructor.name ]);
+              throw new Error("Failed pattern match at Recipes.DataStructures (line 77, column 1 - line 77, column 102): " + [ v.constructor.name, v1.constructor.name ]);
           };
+      };
+  };
+  var decodeCustomItem = function (dictThrows) {
+      return function (item) {
+          var v = function (v1) {
+              if (Data_Boolean.otherwise) {
+                  return Recipes_ErrorHandling["throw"](dictThrows)("Unable to decode app state item " + item);
+              };
+              throw new Error("Failed pattern match at Recipes.DataStructures (line 53, column 1 - line 53, column 70): " + [ item.constructor.name ]);
+          };
+          var $74 = Data_String_Common.split(":")(item);
+          if ($74.length === 3) {
+              return Control_Applicative.pure((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())({
+                  amount: "",
+                  ingredient: {
+                      name: $74[0],
+                      store: $74[1],
+                      section: (function () {
+                          var $75 = $74[2] === "";
+                          if ($75) {
+                              return Data_Maybe.Nothing.value;
+                          };
+                          return new Data_Maybe.Just($74[2]);
+                      })(),
+                      common: false
+                  }
+              });
+          };
+          return v(true);
+      };
+  };
+  var decodeCustomItems = function (dictThrows) {
+      return function (v) {
+          if (v instanceof Data_Maybe.Nothing) {
+              return Control_Applicative.pure((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(Data_List_Types.Nil.value);
+          };
+          if (v instanceof Data_Maybe.Just) {
+              return Data_Functor.mapFlipped((((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Bind1()).Apply0()).Functor0())(Data_Traversable.traverse(Data_Traversable.traversableArray)((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(decodeCustomItem(dictThrows))(Data_Array.mapMaybe(Data_String_CodeUnits.stripPrefix("CUSTOM::"))(Data_String_Common.split(";")(v.value0))))(Data_List.fromFoldable(Data_Foldable.foldableArray));
+          };
+          throw new Error("Failed pattern match at Recipes.DataStructures (line 60, column 1 - line 60, column 84): " + [ v.constructor.name ]);
       };
   };
   var decodeAppState = function (dictThrows) {
@@ -27034,13 +27130,15 @@ var PS = {};
               };
               if (v.name === "buy groceries") {
                   return Control_Bind.bind((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Bind1())(decodeStoreItems(dictThrows)(allIngredients)(v.ingredients))(function (ingredients) {
-                      return Control_Applicative.pure((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(new BuyGroceries(ingredients));
+                      return Control_Bind.bind((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Bind1())(decodeCustomItems(dictThrows)(v.ingredients))(function (custom) {
+                          return Control_Applicative.pure((((dictThrows.MonadError0()).MonadThrow0()).Monad0()).Applicative0())(new BuyGroceries(ingredients, custom));
+                      });
                   });
               };
               if (Data_Boolean.otherwise) {
                   return Recipes_ErrorHandling["throw"](dictThrows)("Unrecognized Program State: " + v.name);
               };
-              throw new Error("Failed pattern match at Recipes.DataStructures (line 71, column 1 - line 71, column 98): " + [ allIngredients.constructor.name, v.constructor.name ]);
+              throw new Error("Failed pattern match at Recipes.DataStructures (line 89, column 1 - line 89, column 98): " + [ allIngredients.constructor.name, v.constructor.name ]);
           };
       };
   };
@@ -27249,7 +27347,6 @@ var PS = {};
   exports["tableToColsI"] = tableToColsI;
 })(PS);
 (function($PS) {
-  // Generated by purs version 0.13.8
   "use strict";
   $PS["Recipes.Backend.Main"] = $PS["Recipes.Backend.Main"] || {};
   var exports = $PS["Recipes.Backend.Main"];
@@ -27605,13 +27702,13 @@ var PS = {};
                               };
                               throw new Error("Failed pattern match at Recipes.Backend.Main (line 20, column 1 - line 20, column 57): " + [  ]);
                           };
-                          var $15 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
-                          if ($15 instanceof Data_Either.Right) {
-                              var $16 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeList(Data_Argonaut_Decode_Class.decodeJsonString))($15.value0);
-                              if ($16 instanceof Data_Either.Right) {
+                          var $17 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
+                          if ($17 instanceof Data_Either.Right) {
+                              var $18 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeList(Data_Argonaut_Decode_Class.decodeJsonString))($17.value0);
+                              if ($18 instanceof Data_Either.Right) {
                                   return Control_Bind.bind(Effect_Aff.bindAff)(allRecipeIngredients)(function (pairings) {
                                       return Control_Bind.bind(Effect_Aff.bindAff)(allIngredients)(function (ingredients) {
-                                          var groceryList = Recipes_RecipesToIngredients.recipesToIngredients(pairings)(ingredients)($16.value0);
+                                          var groceryList = Recipes_RecipesToIngredients.recipesToIngredients(pairings)(ingredients)($18.value0);
                                           return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.CheckKitchen(groceryList)))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
@@ -27641,7 +27738,7 @@ var PS = {};
                   if (v instanceof HTTPure_Method.Get && Data_Eq.eq(Data_Eq.eqArray(Data_Eq.eqString))(v1)(Recipes_API.submitPantryRoute)) {
                       return Control_Bind.bind(Effect_Aff.bindAff)(getState)(function (state) {
                           if (state instanceof Recipes_DataStructures.CheckKitchen) {
-                              return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(state.value0)))(function () {
+                              return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(state.value0, Data_List_Types.Nil.value)))(function () {
                                   return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                               });
                           };
@@ -27653,11 +27750,11 @@ var PS = {};
                           return function (items) {
                               if (v2.checked) {
                                   return Data_List.filter((function () {
-                                      var $32 = Data_Eq.notEq(Data_Eq.eqString)(v2.item.ingredient.name);
-                                      return function ($33) {
-                                          return $32((function (v3) {
+                                      var $42 = Data_Eq.notEq(Data_Eq.eqString)(v2.item.ingredient.name);
+                                      return function ($43) {
+                                          return $42((function (v3) {
                                               return v3.ingredient.name;
-                                          })($33));
+                                          })($43));
                                       };
                                   })())(items);
                               };
@@ -27674,9 +27771,9 @@ var PS = {};
                               };
                               throw new Error("Failed pattern match at Recipes.Backend.Main (line 20, column 1 - line 20, column 57): " + [  ]);
                           };
-                          var $25 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
-                          if ($25 instanceof Data_Either.Right) {
-                              var $26 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
+                          var $27 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
+                          if ($27 instanceof Data_Either.Right) {
+                              var $28 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
                                   return "store";
                               }))()())(new Data_Symbol.IsSymbol(function () {
                                   return "section";
@@ -27692,23 +27789,66 @@ var PS = {};
                                   return "item";
                               }))()())(new Data_Symbol.IsSymbol(function () {
                                   return "checked";
-                              }))()())())($25.value0);
-                              if ($26 instanceof Data_Either.Right) {
+                              }))()())())($27.value0);
+                              if ($28 instanceof Data_Either.Right) {
                                   return Control_Bind.bind(Effect_Aff.bindAff)(getState)(function (state) {
                                       if (state instanceof Recipes_DataStructures.InputRecipes) {
                                           return HTTPure_Response.conflict(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("No items can or will exist until recipes are input.");
                                       };
                                       if (state instanceof Recipes_DataStructures.CheckKitchen) {
-                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(Recipes_DataStructures.CheckKitchen.create(processItem($26.value0)(state.value0))))(function () {
+                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(Recipes_DataStructures.CheckKitchen.create(processItem($28.value0)(state.value0))))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
                                       };
                                       if (state instanceof Recipes_DataStructures.BuyGroceries) {
-                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(Recipes_DataStructures.BuyGroceries.create(processItem($26.value0)(state.value0))))(function () {
+                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(processItem($28.value0)(state.value0), processItem($28.value0)(state.value1))))(function () {
                                               return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
                                           });
                                       };
                                       throw new Error("Failed pattern match at Recipes.Backend.Main (line 75, column 13 - line 82, column 34): " + [ state.constructor.name ]);
+                                  });
+                              };
+                              return v2(true);
+                          };
+                          return v2(true);
+                      })();
+                      return go;
+                  };
+                  if (v instanceof HTTPure_Method.Post && Data_Eq.eq(Data_Eq.eqArray(Data_Eq.eqString))(v1)(Recipes_API.addItemRoute)) {
+                      var addItem = function (ingredient) {
+                          return function (items) {
+                              return new Data_List_Types.Cons({
+                                  ingredient: ingredient,
+                                  amount: ""
+                              }, items);
+                          };
+                      };
+                      var go = (function () {
+                          var v2 = function (v3) {
+                              if (Data_Boolean.otherwise) {
+                                  return HTTPure_Response.badRequest(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("Could not parse request body");
+                              };
+                              throw new Error("Failed pattern match at Recipes.Backend.Main (line 20, column 1 - line 20, column 57): " + [  ]);
+                          };
+                          var $35 = Data_Argonaut_Decode_Parser.parseJson(rqst.body);
+                          if ($35 instanceof Data_Either.Right) {
+                              var $36 = Data_Argonaut_Decode_Class.decodeJson(Data_Argonaut_Decode_Class.decodeRecord(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonBoolean)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonMaybe(Data_Argonaut_Decode_Class.decodeJsonString))(Data_Argonaut_Decode_Class.gDecodeJsonCons(Data_Argonaut_Decode_Class.decodeJsonString)(Data_Argonaut_Decode_Class.gDecodeJsonNil)(new Data_Symbol.IsSymbol(function () {
+                                  return "store";
+                              }))()())(new Data_Symbol.IsSymbol(function () {
+                                  return "section";
+                              }))()())(new Data_Symbol.IsSymbol(function () {
+                                  return "name";
+                              }))()())(new Data_Symbol.IsSymbol(function () {
+                                  return "common";
+                              }))()())())($35.value0);
+                              if ($36 instanceof Data_Either.Right) {
+                                  return Control_Bind.bind(Effect_Aff.bindAff)(getState)(function (state) {
+                                      if (state instanceof Recipes_DataStructures.BuyGroceries) {
+                                          return Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(setState(new Recipes_DataStructures.BuyGroceries(state.value0, addItem($36.value0)(state.value1))))(function () {
+                                              return HTTPure_Response.noContent(Effect_Aff_Class.monadAffAff);
+                                          });
+                                      };
+                                      return HTTPure_Response.conflict(Effect_Aff_Class.monadAffAff)(HTTPure_Body.bodyString)("The application is not in a state such that adding items is permitted.");
                                   });
                               };
                               return v2(true);
@@ -27735,9 +27875,9 @@ var PS = {};
           };
       };
       var env = (function () {
-          var $34 = Effect_Class.liftEffect(Effect_Aff.monadEffectAff);
-          return function ($35) {
-              return $34(Node_Process.lookupEnv($35));
+          var $44 = Effect_Class.liftEffect(Effect_Aff.monadEffectAff);
+          return function ($45) {
+              return $44(Node_Process.lookupEnv($45));
           };
       })();
       return Effect_Aff.launchAff_(Control_Bind.discard(Control_Bind.discardUnit)(Effect_Aff.bindAff)(Recipes_Backend_ServerSetup.loadEnv)(function () {
