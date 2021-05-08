@@ -1,0 +1,1 @@
+UPDATE appState SET name='input recipes', ingredients='';

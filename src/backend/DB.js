@@ -8,7 +8,12 @@ exports.newClient = function(connInfo) {
 
 exports.connect = function(client) {
   return function () {
-    client.connect();
-    return client;
+    return client.connect().then(function() { return client; });
+  }
+}
+
+exports.disconnect = function(client) {
+  return function () { 
+    return client.end();
   }
 }

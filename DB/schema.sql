@@ -1,6 +1,5 @@
 CREATE TABLE recipe (
   name text NOT NULL, 
-  fullDescription text NOT NULL,
   PRIMARY KEY(name)
 );
 
@@ -28,6 +27,6 @@ CREATE TABLE settings (
 
 CREATE TABLE appState (
   name text NOT NULL, 
-  fullDescription text NOT NULL,
+  ingredients text,
   PRIMARY KEY(name)
 );
