@@ -9,6 +9,7 @@ You can edit this file as you like.
   , "argonaut"
   , "concur-react"
   , "console"
+  , "debug"
   , "dotenv"
   , "effect"
   , "httpure"

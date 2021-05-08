@@ -8,15 +8,16 @@
   },
   "scripts": {
     "start": "node ./release/backend/index.js",
-    "ps": "spago build --purs-args \"--stash --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
-    "test": "spago test --purs-args \"--stash --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
-    "go": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
+    "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
+    "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
+    "go": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
     "pack": "npm run ps && webpack",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
     "release-backend": "spago bundle-app -m Recipes.Backend.Main -t release/backend/index.js",
     "release-frontend": "webpack --config webpack.config.release.js",
-    "release": "npm run ps && npm run release-backend && npm run release-frontend"
+    "release": "npm run ps && npm run release-backend && npm run release-frontend",
+    "start-db-server": "sudo service postgresql start"
   },
   "repository": {
     "type": "git",
