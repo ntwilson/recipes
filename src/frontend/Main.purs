@@ -11,6 +11,7 @@ import Data.List (List(..))
 import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, routeStr, submitRecipesRoute)
 import Recipes.DataStructures (AppState(..), Ingredient, decodeAppState)
 import Recipes.Frontend.GroceryList (groceryList)
+import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.PantryList (pantryList)
 import Recipes.Frontend.RecipeList (recipeList)
 import Web.HTML (window)
@@ -20,32 +21,27 @@ import Web.HTML.Window (location)
 loadRecipes :: Aff RecipesValue
 loadRecipes = do
   resp <- request $ defaultRequest { url = routeStr recipesRoute, responseFormat = ResponseFormat.json }
-  {body} <- resp # lmap printError # liftError
-  decodeJson body # lmap printJsonDecodeError # liftError
+  {body} <- resp # liftErrorVia printError 
+  decodeJson body # liftErrorVia printJsonDecodeError 
 
 submitRecipes :: List String -> Aff Unit
-submitRecipes recipes = do
-  tryResp <- request $ defaultRequest 
-    { method = Left POST, url = routeStr submitRecipesRoute, responseFormat = ResponseFormat.string 
+submitRecipes recipes = 
+  expectRequest $ defaultRequest 
+    { method = Left POST, url = routeStr submitRecipesRoute
     , content = Just $ RequestBody.Json $ encodeJson recipes
     }
-
-  resp <- tryResp # lmap printError # liftError
-  if between 200 299 $ unwrap resp.status 
-  then pure unit
-  else throw (i"status "(show $ unwrap resp.status)". "(resp.body) :: String)
 
 loadIngredients :: Aff $ List Ingredient
 loadIngredients = do
   resp <- request $ defaultRequest { url = routeStr ingredientsRoute, responseFormat = ResponseFormat.json }
-  {body} <- resp # lmap printError # liftError
-  decodeJson body # lmap printJsonDecodeError # liftError
+  {body} <- resp # liftErrorVia printError 
+  decodeJson body # liftErrorVia printJsonDecodeError 
 
 loadState :: Aff AppState 
 loadState = do
   resp <- request $ defaultRequest { url = routeStr currentStateRoute, responseFormat = ResponseFormat.json }
-  {body} <- resp # lmap printError # liftError
-  serialized <- decodeJson body # lmap printJsonDecodeError # liftError
+  {body} <- resp # liftErrorVia printError 
+  serialized <- decodeJson body # liftErrorVia printJsonDecodeError 
   ingredients <- loadIngredients
   decodeAppState ingredients serialized
 

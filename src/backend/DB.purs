@@ -32,13 +32,13 @@ connection = do
   if mode /= Just "development"
   then do
     connectionString <- fromMaybe "" <$> env "DATABASE_URL"
-    client <- liftAff $ liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
+    client <- liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
     liftAff $ (join $ liftEffect $ Promise.toAff <$> connect client)
   else do
     database <- fromMaybe "recipes" <$> env "DATABASE_NAME"
     user <- fromMaybe "" <$> env "DATABASE_USER"
     password <- fromMaybe "" <$> env "DATABASE_PASSWORD"
-    client <- liftAff $ liftEffect $ newClient { user, database, password }
+    client <- liftEffect $ newClient { user, database, password }
     liftAff $ (join $ liftEffect $ Promise.toAff <$> connect client)
   
   where

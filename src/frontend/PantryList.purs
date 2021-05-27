@@ -9,11 +9,13 @@ import Data.HTTP.Method (Method(..))
 import Data.List (List)
 import Data.List as List
 import Recipes.API (SetItemStatusValue, routeStr, setItemStatusRoute, submitPantryRoute)
-import Recipes.Frontend.IngredientList (StoreItemSelection(..), ingredientListItem)
+import Recipes.Frontend.Http (expectRequest)
+import Recipes.Frontend.IngredientList (ingredientListItem)
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
+data StoreItemSelection = AnotherItem SetItemStatusValue | FinishWithList
 pantryList :: List SetItemStatusValue -> Widget HTML Unit
 pantryList items = do 
   action <- 
@@ -26,7 +28,7 @@ pantryList items = do
 
   case action of 
     FinishWithList -> do
-      liftAff progressState
+      liftAff $ expectRequest $ defaultRequest { url = routeStr submitPantryRoute }
       liftEffect (window >>= location >>= reload)
 
     AnotherItem item -> do
@@ -38,21 +40,7 @@ pantryList items = do
   where 
     commonItems = items # List.filter (_.item.ingredient.common)
 
-    progressState = do 
-      tryResp <- request $ defaultRequest { url = routeStr submitPantryRoute }
-      resp <- tryResp # lmap printError # liftError
-      if between 200 299 $ unwrap resp.status 
-      then pure unit
-      else throw (i"status "(show $ unwrap resp.status)"." :: String)
-
-    checkItem item = do
-      tryResp <- request $ defaultRequest 
-        { method = Left POST, url = routeStr setItemStatusRoute, responseFormat = ResponseFormat.string 
-        , content = Just $ RequestBody.Json $ encodeJson item
-        }
-
-      resp <- tryResp # lmap printError # liftError
-      if between 200 299 $ unwrap resp.status 
-      then pure unit
-      else throw (i"status "(show $ unwrap resp.status)". "(resp.body) :: String)
-
+    checkItem item = expectRequest $ defaultRequest 
+      { method = Left POST, url = routeStr setItemStatusRoute
+      , content = Just $ RequestBody.Json $ encodeJson item
+      }

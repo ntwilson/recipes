@@ -28,7 +28,7 @@ else instance unitFromThrowable :: Show a => Throwable a Unit where fromThrowabl
 else instance anythingElseFromThrowable :: Show a => Throwable a a where fromThrowable = identity
 
 -- | same as `fromThrowable`, but constrained to work with `String` as a more readable alias and potentially fewer type annotations
-fromMessage :: forall e. Throwable String e => String -> e
+fromMessage :: ∀ e. Throwable String e => String -> e
 fromMessage = fromThrowable
 
 -- | A class for polymorphic error propagation. There are multiple monads that propagate errors in the "typical" sense 
@@ -51,9 +51,14 @@ class (MonadError prop monad, Throwable thrown prop) <= Throws thrown monad prop
 instance throws :: (MonadError prop monad, Throwable thrown prop) => Throws thrown monad prop
 
 -- | Take a concrete Either and lift it into your monad of choice.
-liftError :: forall monad prop thrown a. Throws thrown monad prop => Either thrown a -> monad a
+liftError :: ∀ monad prop thrown a. Throws thrown monad prop => Either thrown a -> monad a
 liftError (Left t) = throw t
 liftError (Right a) = pure a
+
+-- | Take a concrete Either and lift it into your monad of choice.
+liftErrorVia :: ∀ monad prop thrown a err. Throws thrown monad prop => (err -> thrown) -> Either err a -> monad a
+liftErrorVia transform (Left t) = throw $ transform t
+liftErrorVia _ (Right a) = pure a
 
 throw :: ∀ thrown monad prop a. Throws thrown monad prop => thrown -> monad a
 throw = throwError <<< fromThrowable

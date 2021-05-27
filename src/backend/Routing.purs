@@ -1,0 +1,133 @@
+module Recipes.Backend.Routing where
+
+import Backend.Prelude
+
+import Data.Argonaut as Json
+import Data.List (List(..), (:))
+import Data.List as List
+import Data.String.CaseInsensitive (CaseInsensitiveString(..))
+import HTTPure (Method(..))
+import HTTPure as HTTPure
+import Node.Encoding (Encoding(..))
+import Recipes.API (SetItemStatusValue, AddItemValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitPantryRoute, submitRecipesRoute)
+import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getSerializedState, getState, setState)
+import Recipes.DataStructures (AppState(..))
+import Recipes.RecipesToIngredients (recipesToIngredients)
+
+router :: String -> HTTPure.Request -> HTTPure.ResponseM
+router dist rqst = 
+  catchError (rtr rqst.method rqst.path) errHandler
+  where
+    rtr Get [] = serveHtml (i dist"/index.html")
+    rtr Get ["main.js"] = serveJavascript (i dist"/main.js")
+
+    rtr Get route | route == recipesRoute = do
+      contents <- encodeJson <$> allRecipes 
+      HTTPure.ok $ Json.stringify contents
+
+    rtr Get route | route == ingredientsRoute = do
+      contents <- encodeJson <$> allIngredients
+      HTTPure.ok $ Json.stringify contents
+
+    rtr Post route | route == submitRecipesRoute = go 
+      where 
+        go
+          | Right json <- Json.parseJson rqst.body
+          , Right (submittedRecipes :: List String) <- decodeJson json = do
+            pairings <- allRecipeIngredients
+            ingredients <- allIngredients
+            let groceryList = recipesToIngredients pairings ingredients submittedRecipes
+            setState (CheckKitchen groceryList)
+            HTTPure.noContent
+          
+          | otherwise = HTTPure.badRequest "Could not parse request body"
+
+    rtr Get route | route == currentStateRoute = do
+      state <- getSerializedState
+      HTTPure.ok $ Json.stringify $ encodeJson state
+
+    rtr Get route | route == resetStateRoute = do
+      setState InputRecipes
+      HTTPure.noContent
+
+    rtr Get route | route == submitPantryRoute = do
+      state <- getState
+      case state of 
+        CheckKitchen items -> do
+          setState $ BuyGroceries items Nil
+          HTTPure.noContent
+        _ -> HTTPure.conflict "No items can or will exist until recipes are input."
+
+    rtr Post route | route == setItemStatusRoute = go
+      where
+        go 
+          | Right json <- Json.parseJson rqst.body
+          , Right (submittedItem :: SetItemStatusValue) <- decodeJson json = do
+            state <- getState 
+            case state of 
+              InputRecipes -> HTTPure.conflict "No items can or will exist until recipes are input."
+              CheckKitchen items -> do
+                setState $ CheckKitchen $ processItem submittedItem items
+                HTTPure.noContent 
+              BuyGroceries items custom -> do
+                setState $ BuyGroceries (processItem submittedItem items) (processItem submittedItem custom)
+                HTTPure.noContent
+
+          | otherwise = HTTPure.badRequest "Could not parse request body"
+        
+        processItem { checked, item: submittedItem } items 
+          | checked = List.filter (_.ingredient.name >>> (/=) submittedItem.ingredient.name) items
+          | otherwise = submittedItem : items
+
+    rtr Post route | route == addItemRoute = go 
+      where 
+        go 
+          | Right json <- Json.parseJson rqst.body 
+          , Right (submittedItem :: AddItemValue) <- decodeJson json = do
+            state <- getState
+            case state of
+              BuyGroceries items custom -> do
+                setState $ BuyGroceries items (addItem submittedItem items custom)
+                HTTPure.noContent
+              _ -> HTTPure.conflict "The application is not in a state such that adding items is permitted."
+
+          | otherwise = HTTPure.badRequest "Could not parse request body"
+
+        addItem ingredient normalItems customItems = { ingredient: corrected, amount: "" } : customItems
+          where
+            corrected = correctItem (normalItems <#> _.ingredient) (customItems <#> _.ingredient) ingredient
+
+        correctItem :: List AddItemValue -> List AddItemValue -> AddItemValue -> AddItemValue 
+        correctItem existingItems existingCustom newCustom = newCustom { store = correctedStore, section = correctedSection }
+          where 
+            correctedStore = case List.find (\{store: existingStore} -> equating CaseInsensitiveString existingStore newCustom.store) allExisting of
+              Just existingItem -> existingItem.store
+              Nothing -> newCustom.store
+
+            correctedSection = case newCustom.section of
+              Nothing -> Nothing
+              Just customSection 
+                | Just existingSection <- List.findMap (sameSection customSection) allExisting -> Just existingSection
+                | otherwise -> Just customSection
+
+            sameSection custSection {section: Nothing} = Nothing
+            sameSection custSection {section: Just existingSection} 
+              | equating CaseInsensitiveString existingSection custSection = Just existingSection
+              | otherwise = Nothing
+
+            allExisting = existingItems <> existingCustom
+
+    rtr _ _ = HTTPure.notFound
+    
+    errHandler err = HTTPure.internalServerError $ show err
+
+serveHtml :: String -> HTTPure.ResponseM
+serveHtml = serveStaticContent "text/html"
+serveJavascript :: String -> HTTPure.ResponseM
+serveJavascript = serveStaticContent "text/javascript"
+
+serveStaticContent :: String -> String -> HTTPure.ResponseM
+serveStaticContent contentType filePath = do
+  contents <- readTextFile UTF8 filePath
+  HTTPure.ok' (HTTPure.header "Content-Type" (i contentType"; charset=UTF-8")) contents
+
