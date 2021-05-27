@@ -11,7 +11,8 @@ import Data.List as List
 import Data.List.NonEmpty as NEList
 import Data.List.Types (List, NonEmptyList)
 import Recipes.API (AddItemValue, SetItemStatusValue, addItemRoute, resetStateRoute, routeStr, setItemStatusRoute)
-import Recipes.Frontend.IngredientList (StoreItemSelection(..), ingredientListItem)
+import Recipes.Frontend.Http (expectRequest)
+import Recipes.Frontend.IngredientList (ingredientListItem)
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
@@ -20,7 +21,7 @@ import Web.HTML.Window (location)
 sectionList :: NonEmptyList SetItemStatusValue -> Widget HTML SetItemStatusValue
 sectionList itemsBySection = 
   h4' [text section]
-  <>
+  <|>
   fold (itemsBySection <#> ingredientListItem)
   
   where 
@@ -40,10 +41,12 @@ storeList itemsByStore =
       List.sortBy (comparing _.item.ingredient.section)
       >>> List.groupBy (equating _.item.ingredient.section)
 
+type AddItemState = {name::String, store::String, section::String}
+data AddItemAction = EnterState AddItemState | Finish AddItemState
 addItemForm :: Widget HTML AddItemValue
 addItemForm = do
   _ <- button 
-    [ Props.onClick
+    [ Props.onClick 
     , Props.style 
       { textDecoration: "underline", marginTop: "1em", marginBottom: "1em", border: "none", backgroundColor: "white" }
     ] 
@@ -60,80 +63,63 @@ addItemForm = do
         [ table [ Props.style { marginTop: "1em" } ]
           [ tr' [ td' [text "Name"], td' [text "Store"], td' [text "Section (optional)"] ]
           , tr' 
-            [ td' [textBox [Props.value name] <#> state {name = _} <#> Left ]
-            , td' [textBox [Props.value store] <#> state {store = _} <#> Left ]
-            , td' [textBox [Props.value section] <#> state {section = _} <#> Left ]
+            [ td' [textBox [Props.value name] <#> state {name = _} <#> EnterState ]
+            , td' [textBox [Props.value store] <#> state {store = _} <#> EnterState ]
+            , td' [textBox [Props.value section] <#> state {section = _} <#> EnterState ]
             ]
           ]
         , br'
-        , button [Props.onClick $> Right state, Props.style {marginBottom: "1em"}] [text "Done"]
+        , button [Props.onClick $> Finish state, Props.style {marginBottom: "1em"}] [text "Done"]
         ]
 
       case formResult of
-        Left newState -> itemInfo newState
-        Right newState -> pure newState
+        EnterState newState -> itemInfo newState
+        Finish newState -> pure newState
 
     textBox props = input (props <> [Props._type "text", Props.onChange <#> unsafeTargetValue])
 
-
+data GroceryListAction = NewItem AddItemValue | CheckItem SetItemStatusValue | Finished 
 groceryList :: List SetItemStatusValue -> Widget HTML Unit
 groceryList items = do 
   action <- 
     fold 
       [ h1' [text "Grocery list"]
-      , fold (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> (Right <<< AnotherItem)))
-      , (addItemForm <#> Left)
-      , (div' [button [Props.onClick] [text "Restart"]] $> Right FinishWithList)
+      , fold (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> CheckItem))
+      , (addItemForm <#> NewItem)
+      , (div' [button [Props.onClick] [text "Restart"]] $> Finished)
       ]
 
   case action of 
-    Right FinishWithList -> do
+    Finished -> do
       liftAff resetState
       liftEffect (window >>= location >>= reload)
       groceryList items 
 
-    Right (AnotherItem item) -> do
-      liftAff $ checkItem item
+    CheckItem item -> do
+      liftEffect $ checkItem item
       let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == item.item.ingredient.name then item else oldItem
       groceryList updatedItems
 
-    Left item -> do
+    NewItem item -> do
       liftAff $ submitItem item
       liftEffect (window >>= location >>= reload)
       groceryList items
 
   where 
-    resetState = do 
-      tryResp <- request $ defaultRequest { url = routeStr resetStateRoute }
-      resp <- tryResp # lmap printError # liftError
-      if between 200 299 $ unwrap resp.status 
-      then pure unit
-      else throw (i"status "(show $ unwrap resp.status)"." :: String)
+    resetState = expectRequest $ defaultRequest { url = routeStr resetStateRoute }
 
-    checkItem item = do
-      tryResp <- request $ defaultRequest 
-        { method = Left POST, url = routeStr setItemStatusRoute, responseFormat = ResponseFormat.string 
+    checkItem item = launchAff_ $ expectRequest $ defaultRequest 
+      { method = Left POST, url = routeStr setItemStatusRoute
+      , content = Just $ RequestBody.Json $ encodeJson item
+      }
+
+    submitItem item = 
+      expectRequest $ defaultRequest
+        { method = Left POST, url = routeStr addItemRoute
         , content = Just $ RequestBody.Json $ encodeJson item
         }
-
-      resp <- tryResp # lmap printError # liftError
-      if between 200 299 $ unwrap resp.status 
-      then pure unit
-      else throw (i"status "(show $ unwrap resp.status)". "(resp.body) :: String)
 
     byStore :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
     byStore = 
       List.sortBy (comparing _.item.ingredient.store)
       >>> List.groupBy (equating _.item.ingredient.store)
-
-    submitItem item = do 
-      tryResp <- request $ defaultRequest
-        { method = Left POST, url = routeStr addItemRoute, responseFormat = ResponseFormat.string 
-        , content = Just $ RequestBody.Json $ encodeJson item
-        }
-
-      resp <- tryResp # lmap printError # liftError
-      if between 200 299 $ unwrap resp.status 
-      then pure unit
-      else throw (i"status "(show $ unwrap resp.status)". "(resp.body) :: String)
-      

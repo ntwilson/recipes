@@ -21,7 +21,7 @@ submitPantryRoute = ["api", "submitPantry"]
 
 setItemStatusRoute :: Array String
 setItemStatusRoute = ["api", "setItemStatus"]
-type SetItemStatusValue = { checked :: Boolean, item :: StoreItem }
+type SetItemStatusValue = { checked :: Boolean, item :: StoreItem, isCustom :: Boolean }
 
 addItemRoute :: Array String
 addItemRoute = ["api", "addItem"]
