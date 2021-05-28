@@ -8,9 +8,9 @@
   },
   "scripts": {
     "start": "node ./release/backend/index.js",
-    "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
-    "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
-    "go": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration\"",
+    "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration,HidingImport\"",
+    "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration,HidingImport\"",
+    "go": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration,HidingImport\"",
     "pack": "npm run ps && webpack",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",

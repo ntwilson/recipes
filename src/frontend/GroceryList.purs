@@ -3,7 +3,6 @@ module Recipes.Frontend.GroceryList where
 import Frontend.Prelude
 
 import Affjax.RequestBody as RequestBody
-import Affjax.ResponseFormat as ResponseFormat
 import Concur.React.Props (unsafeTargetValue)
 import Concur.React.Props as Props
 import Data.HTTP.Method (Method(..))
