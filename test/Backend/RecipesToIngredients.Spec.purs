@@ -5,7 +5,7 @@ import Backend.Prelude
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.List.NonEmpty (cons')
-import Recipes.RecipesToIngredients (aggregateGroup, recipesToIngredients)
+import Recipes.Backend.RecipesToIngredients (aggregateGroup, recipesToIngredients)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 

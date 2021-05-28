@@ -9,7 +9,8 @@ import Data.Argonaut (printJsonDecodeError)
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..))
 import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, routeStr, submitRecipesRoute)
-import Recipes.DataStructures (AppState(..), Ingredient, decodeAppState)
+import Recipes.Backend.StateSerialization (decodeAppState)
+import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..))
 import Recipes.Frontend.GroceryList (groceryList)
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.PantryList (pantryList)
@@ -56,13 +57,14 @@ content :: Widget HTML Unit
 content = do
   appState <- (text "Loading..." <|> liftAff loadState)
   case appState of 
-    InputRecipes -> inputRecipes
-    CheckKitchen ingredients -> pantryList (ingredients <#> {checked: false, isCustom: false, item: _})
-    BuyGroceries ingredients custom -> 
+    {useCase: Shopping, shoppingState: InputRecipes} -> inputRecipes
+    {useCase: Shopping, shoppingState: CheckKitchen ingredients} -> pantryList (ingredients <#> {checked: false, isCustom: false, item: _})
+    {useCase: Shopping, shoppingState: BuyGroceries ingredients custom} -> 
       groceryList 
         (  (ingredients <#> {checked: false, isCustom: false, item: _})
         <> (custom <#> {checked: false, isCustom: true, item: _})
         )
+    _ -> liftEffect $ throw "Unsupported app state.  Try resetting the state and trying this state later"
 
 main :: Effect Unit
 main = runWidgetInDom "contents" content

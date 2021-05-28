@@ -28,5 +28,13 @@ CREATE TABLE settings (
 CREATE TABLE appState (
   name text NOT NULL, 
   ingredients text,
+  recipeSteps text,
   PRIMARY KEY(name)
+);
+
+CREATE TABLE recipeSteps (
+  recipeName TEXT NOT NULL,
+  stepNumber SMALLINT NOT NULL,
+  stepDescription TEXT NOT NULL,
+  PRIMARY KEY(recipeName, stepNumber)
 );

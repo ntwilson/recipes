@@ -1,4 +1,4 @@
-module Recipes.RecipesToIngredients where
+module Recipes.Backend.RecipesToIngredients where
 
 import Backend.Prelude
 

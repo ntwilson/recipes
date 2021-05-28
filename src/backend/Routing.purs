@@ -11,8 +11,8 @@ import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
 import Recipes.API (SetItemStatusValue, AddItemValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitPantryRoute, submitRecipesRoute)
 import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getSerializedState, getState, setState)
-import Recipes.DataStructures (AppState(..))
-import Recipes.RecipesToIngredients (recipesToIngredients)
+import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
+import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
 
 router :: String -> HTTPure.Request -> HTTPure.ResponseM
 router dist rqst = 
@@ -36,8 +36,9 @@ router dist rqst =
           , Right (submittedRecipes :: List String) <- decodeJson json = do
             pairings <- allRecipeIngredients
             ingredients <- allIngredients
+            state <- getState
             let groceryList = recipesToIngredients pairings ingredients submittedRecipes
-            setState (CheckKitchen groceryList)
+            setState { useCase: Shopping, shoppingState: CheckKitchen groceryList, cookingState: state.cookingState }
             HTTPure.noContent
           
           | otherwise = HTTPure.badRequest "Could not parse request body"
@@ -47,14 +48,14 @@ router dist rqst =
       HTTPure.ok $ Json.stringify $ encodeJson state
 
     rtr Get route | route == resetStateRoute = do
-      setState InputRecipes
+      setState { useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing }
       HTTPure.noContent
 
     rtr Get route | route == submitPantryRoute = do
       state <- getState
       case state of 
-        CheckKitchen items -> do
-          setState $ BuyGroceries items Nil
+        {useCase: Shopping, shoppingState: CheckKitchen items} -> do
+          setState $ state {shoppingState = BuyGroceries items Nil}
           HTTPure.noContent
         _ -> HTTPure.conflict "No items can or will exist until recipes are input."
 
@@ -65,15 +66,15 @@ router dist rqst =
           , Right (submittedItem :: SetItemStatusValue) <- decodeJson json = do
             state <- getState 
             case state of 
-              InputRecipes -> HTTPure.conflict "No items can or will exist until recipes are input."
-              CheckKitchen items -> do
-                setState $ CheckKitchen $ processItem submittedItem items
+              {useCase:Shopping, shoppingState: CheckKitchen items} -> do
+                setState $ state {shoppingState = CheckKitchen $ processItem submittedItem items}
                 HTTPure.noContent 
-              BuyGroceries items custom -> do
+              {useCase:Shopping, shoppingState: BuyGroceries items custom} -> do
                 if submittedItem.isCustom 
-                then setState $ BuyGroceries items (processItem submittedItem custom)
-                else setState $ BuyGroceries (processItem submittedItem items) custom
+                then setState $ state{shoppingState = BuyGroceries items (processItem submittedItem custom)}
+                else setState $ state{shoppingState = BuyGroceries (processItem submittedItem items) custom}
                 HTTPure.noContent
+              _ -> HTTPure.conflict "No items can or will exist until recipes are input."
 
           | otherwise = HTTPure.badRequest "Could not parse request body"
         
@@ -88,8 +89,8 @@ router dist rqst =
           , Right (submittedItem :: AddItemValue) <- decodeJson json = do
             state <- getState
             case state of
-              BuyGroceries items custom -> do
-                setState $ BuyGroceries items (addItem submittedItem items custom)
+              {useCase: Shopping, shoppingState: BuyGroceries items custom} -> do
+                setState $ state {shoppingState = BuyGroceries items (addItem submittedItem items custom)}
                 HTTPure.noContent
               _ -> HTTPure.conflict "The application is not in a state such that adding items is permitted."
 

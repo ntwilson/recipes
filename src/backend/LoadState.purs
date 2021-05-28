@@ -7,7 +7,8 @@ import Data.List (List)
 import Data.List as List
 import Recipes.API (RecipesValue)
 import Recipes.Backend.DB (appState, execQuery, execUpdate, ingredient, recipe, recipeIngredients, withConnection)
-import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, SerializedAppState, decodeAppState, encodeAppState)
+import Recipes.Backend.StateSerialization (decodeAppState, encodeAppState)
+import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, SerializedAppState)
 import Selda (selectFrom)
 import Selda as Selda
 
@@ -40,4 +41,4 @@ setState :: AppState -> Aff Unit
 setState state = withConnection $ \conn -> do
   let stateRecord = encodeAppState state
   execUpdate conn appState (const $ Selda.lit true)  
-    (const {name: Selda.lit stateRecord.name, ingredients: Selda.lit stateRecord.ingredients}) 
+    (const {name: Selda.lit stateRecord.name, ingredients: Selda.lit stateRecord.ingredients, recipeSteps: Selda.lit stateRecord.recipeSteps}) 
