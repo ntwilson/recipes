@@ -7,7 +7,7 @@ import Data.List (List)
 import Data.List as List
 import Recipes.API (RecipesValue)
 import Recipes.Backend.DB (appState, execQuery, execUpdate, ingredient, recipe, recipeIngredients, withConnection)
-import Recipes.Backend.StateSerialization (decodeAppState, encodeAppState)
+import Recipes.StateSerialization (decodeAppState, encodeAppState)
 import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, SerializedAppState)
 import Selda (selectFrom)
 import Selda as Selda

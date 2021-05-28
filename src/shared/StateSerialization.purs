@@ -1,4 +1,4 @@
-module Recipes.Backend.StateSerialization where
+module Recipes.StateSerialization where
 
 import Backend.Prelude
 

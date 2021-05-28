@@ -9,7 +9,7 @@ import Data.String.CaseInsensitive (CaseInsensitiveString(..))
 import HTTPure (Method(..))
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Recipes.API (SetItemStatusValue, AddItemValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, resetStateRoute, setItemStatusRoute, submitPantryRoute, submitRecipesRoute)
+import Recipes.API (AddItemValue, SetItemStatusValue, SetRecipeStepStatusValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, resetRecipeRoute, resetStateRoute, setItemStatusRoute, setRecipeStepStatusRoute, submitPantryRoute, submitRecipesRoute)
 import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getSerializedState, getState, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
@@ -48,7 +48,8 @@ router dist rqst =
       HTTPure.ok $ Json.stringify $ encodeJson state
 
     rtr Get route | route == resetStateRoute = do
-      setState { useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing }
+      state <- getState
+      setState $ state { useCase = Shopping, shoppingState = InputRecipes }
       HTTPure.noContent
 
     rtr Get route | route == submitPantryRoute = do
@@ -119,6 +120,31 @@ router dist rqst =
               | otherwise = Nothing
 
             allExisting = existingItems <> existingCustom
+
+    rtr Get route | route == resetRecipeRoute = do
+      state <- getState
+      setState $ state { cookingState = Nothing }
+      HTTPure.noContent
+
+    rtr Post route | route == setRecipeStepStatusRoute = go
+      where 
+        go 
+          | Right json <- Json.parseJson rqst.body 
+          , Right (submittedItem :: SetRecipeStepStatusValue) <- decodeJson json = do
+            state <- getState
+            case state.cookingState of
+              Nothing -> HTTPure.conflict "The application is not in a state such that modifying recipe steps is possible."
+              Just cookingState@{steps} ->
+                if not $ List.any (\s -> s.ordinal == submittedItem.ordinal) steps
+                then HTTPure.badRequest (i"Could not find step with ordinal: "(show submittedItem.ordinal) :: String)
+                else do
+                  setState $ state { cookingState = Just $ cookingState { steps = replaceStep submittedItem steps } }
+                  HTTPure.noContent
+
+          | otherwise = HTTPure.badRequest (i"Could not parse request body: "rqst.body :: String)
+
+        replaceStep newStep steps = 
+          steps <#> \step -> if step.ordinal == newStep.ordinal then newStep else step
 
     rtr _ _ = HTTPure.notFound
     

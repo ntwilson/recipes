@@ -1,9 +1,9 @@
-module Recipes.Backend.StateSerialization.Spec where
+module Recipes.StateSerialization.Spec where
 
 import Backend.Prelude
 
 import Data.List (List(..), (:))
-import Recipes.Backend.StateSerialization (decodeAppState, encodeAppState)
+import Recipes.StateSerialization (decodeAppState, encodeAppState)
 import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, SerializedAppState, ShoppingState(..))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
