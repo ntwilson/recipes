@@ -3,11 +3,12 @@ module Recipes.Backend.StateSerialization where
 import Backend.Prelude
 
 import Data.Array as Array
+import Data.Int as Int
 import Data.List (List(..))
 import Data.List as List
 import Data.String (Pattern(..), split, stripPrefix)
 import Data.String as String
-import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, SerializedAppState, ShoppingState(..), StoreItem)
+import Recipes.DataStructures (AppState, CookingState, CurrentUseCase(..), Ingredient, SerializedAppState, ShoppingState(..), StoreItem, RecipeStep)
 
 decodeCustomItem :: ∀ m a. Throws String m a => String -> m StoreItem
 decodeCustomItem item 
@@ -45,17 +46,62 @@ decodeStoreItems allIngredients (Just serializedIngredients) =
   where 
     startsWith prefix = isJust <<< stripPrefix (Pattern prefix)
 
+decodeSteps :: ∀ m a. Throws String m a => String -> m (List RecipeStep)
+decodeSteps steps = for (List.fromFoldable $ split (Pattern ";") steps) $ \step ->
+  case split (Pattern "&&") step of 
+    [encodedCompletion, encodedOrdinal, description]
+    | Just completed <- decodeBool encodedCompletion, Just ordinal <- Int.fromString encodedOrdinal ->
+      pure { completed, ordinal, description }
+
+    [completion, ordinal, description] -> throw (i"unrecognized completion/ordinal: '"completion"'/'"ordinal"'" :: String)
+    _ -> throw (i"Invalid app state (recipe steps), expected completion, ordinal, description separated by '&&'. Got '"step"'" :: String)
+
+  where 
+    decodeBool "T" = Just true
+    decodeBool "F" = Just false
+    decodeBool _   = Nothing
+
+
+decodeCookingState :: ∀ m a. Throws String m a => Maybe String -> m (Maybe CookingState)
+decodeCookingState Nothing   = pure Nothing
+decodeCookingState (Just "") = pure Nothing
+decodeCookingState (Just cookingState) = 
+  case split (Pattern "::") cookingState of
+    ["", _] -> throw "Invalid AppState (Cooking state), recipe was blank"
+    [_, ""] -> throw "Invalid AppState (Cooking state), steps were blank"
+    [recipe, steps] -> do
+      parsedSteps <- decodeSteps steps
+      pure $ Just { recipe, steps: parsedSteps }
+    _ -> throw "Invalid AppState (Cooking state), expecting a recipe, then '::' then the steps"
+
 decodeAppState :: ∀ m a. Throws String m a => List Ingredient -> SerializedAppState -> m AppState 
-decodeAppState allIngredients { name, ingredients: encodedIngredients } 
-  | name == "input recipes" = pure {useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing}
+decodeAppState allIngredients { name, ingredients: encodedIngredients, recipeSteps: encodedSteps } 
+  | name == "input recipes" = do
+    cookingState <- decodeCookingState encodedSteps
+    pure {useCase: Shopping, shoppingState: InputRecipes, cookingState}
   | name == "check kitchen" = do
     ingredients <- decodeStoreItems allIngredients encodedIngredients
-    pure {useCase: Shopping, shoppingState: CheckKitchen ingredients, cookingState: Nothing}
+    cookingState <- decodeCookingState encodedSteps
+    pure {useCase: Shopping, shoppingState: CheckKitchen ingredients, cookingState}
 
   | name == "buy groceries" = do
     ingredients <- decodeStoreItems allIngredients encodedIngredients
     custom <- decodeCustomItems encodedIngredients
-    pure {useCase: Shopping, shoppingState: BuyGroceries ingredients custom, cookingState: Nothing}
+    cookingState <- decodeCookingState encodedSteps
+    pure {useCase: Shopping, shoppingState: BuyGroceries ingredients custom, cookingState}
+
+  | name == "cooking(input recipes)" = do
+    cookingState <- decodeCookingState encodedSteps
+    pure {useCase: Cooking, shoppingState: InputRecipes, cookingState}
+  | name == "cooking(check kitchen)" = do
+    cookingState <- decodeCookingState encodedSteps
+    ingredients <- decodeStoreItems allIngredients encodedIngredients
+    pure {useCase: Cooking, shoppingState: CheckKitchen ingredients, cookingState}
+  | name == "cooking(buy groceries)" = do
+    cookingState <- decodeCookingState encodedSteps
+    ingredients <- decodeStoreItems allIngredients encodedIngredients
+    custom <- decodeCustomItems encodedIngredients
+    pure {useCase: Cooking, shoppingState: BuyGroceries ingredients custom, cookingState}
 
   | otherwise = throw $ "Unrecognized Program State: " <> name
 
@@ -71,13 +117,21 @@ encodeShopping InputRecipes = Nothing
 encodeShopping (CheckKitchen ingredients) = Just $ encodeIngredients ingredients Nil
 encodeShopping (BuyGroceries ingredients custom) = Just $ encodeIngredients ingredients custom
 
+encodeCooking :: CookingState -> String 
+encodeCooking {recipe, steps} = i recipe"::"encodedSteps
+  where 
+    encodedSteps = intercalate ";" (encodeStep <$> steps)
+    encodeStep {completed, ordinal, description} = i (encodeBool completed)"&&"(show ordinal)"&&"description
+    encodeBool true  = "T"
+    encodeBool false = "F"
+
 encodeAppState :: AppState -> SerializedAppState
 encodeAppState {useCase: Shopping, shoppingState: shopping@InputRecipes, cookingState} = 
-  { name: "input recipes", ingredients: encodeShopping shopping, recipeSteps: Nothing }
+  { name: "input recipes", ingredients: encodeShopping shopping, recipeSteps: encodeCooking <$> cookingState }
 encodeAppState {useCase: Shopping, shoppingState: shopping@(CheckKitchen _), cookingState} = 
-  { name: "check kitchen", ingredients: encodeShopping shopping, recipeSteps: Nothing }
+  { name: "check kitchen", ingredients: encodeShopping shopping, recipeSteps: encodeCooking <$> cookingState }
 encodeAppState {useCase: Shopping, shoppingState: shopping@(BuyGroceries _ _), cookingState} = 
-  { name: "buy groceries", ingredients: encodeShopping shopping, recipeSteps: Nothing }
+  { name: "buy groceries", ingredients: encodeShopping shopping, recipeSteps: encodeCooking <$> cookingState }
 
 encodeAppState ({useCase: Cooking, cookingState, shoppingState}) = 
-  { name: "cooking", ingredients: encodeShopping shoppingState, recipeSteps: Nothing }
+  { name: "cooking", ingredients: encodeShopping shoppingState, recipeSteps: encodeCooking <$> cookingState }

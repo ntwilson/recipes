@@ -38,9 +38,21 @@ spec = do
       decode ingredients {name: "buy groceries", ingredients: Just "1 cup:rice;2 cakes:noodles;1:chicken", recipeSteps: Nothing} 
         `shouldEqual` (Right {useCase:Shopping, shoppingState: BuyGroceries ({ingredient:rice, amount:"1 cup"} : {ingredient:noodles, amount:"2 cakes"} : {ingredient:chicken, amount:"1"} : Nil) Nil, cookingState: Nothing})
 
+      decode ingredients {name: "cooking(input recipes)", ingredients: Nothing, recipeSteps: Nothing} 
+        `shouldEqual` Right {useCase:Cooking, shoppingState: InputRecipes, cookingState: Nothing}
+      decode ingredients {name: "cooking(input recipes)", ingredients: Nothing, recipeSteps: Just "Simple Chili::T&&1&&Brown the beef in a pot;F&&2&&Empty the rest of the ingredients into the pot"} 
+        `shouldEqual` Right {useCase:Cooking, shoppingState: InputRecipes, cookingState: Just $  
+          { recipe: "Simple Chili", steps: {completed: true, ordinal: 1, description: "Brown the beef in a pot"} :  {completed: false, ordinal: 2, description: "Empty the rest of the ingredients into the pot"} : Nil } }
+
+      decode ingredients {name: "cooking(check kitchen)", ingredients: Just "1 cup:rice", recipeSteps: Just "Simple Chili::T&&1&&Brown the beef in a pot;F&&2&&Empty the rest of the ingredients into the pot"} 
+        `shouldEqual` Right {useCase:Cooking, shoppingState: CheckKitchen ({ingredient:rice, amount:"1 cup"} : Nil), cookingState: Just $  
+          { recipe: "Simple Chili", steps: {completed: true, ordinal: 1, description: "Brown the beef in a pot"} :  {completed: false, ordinal: 2, description: "Empty the rest of the ingredients into the pot"} : Nil } }
+
     it "throws errors when there's a problem decoding" do
       decode ingredients {name: "unknown", ingredients: Nothing, recipeSteps: Nothing} `shouldSatisfy` isLeft
       decode ingredients {name: "check kitchen", ingredients: Just "unknown", recipeSteps: Nothing} `shouldSatisfy` isLeft
+
+      decode ingredients {name: "cooking(check kitchen)", ingredients: Nothing, recipeSteps: Just "chili::abc"} `shouldSatisfy` isLeft
 
     it "can round-trip any app state" do 
       let
@@ -51,3 +63,7 @@ spec = do
       roundTripTest {useCase:Shopping, shoppingState: CheckKitchen ({ingredient:rice, amount:"1 cup"} : {ingredient:chicken, amount:"1"} : {ingredient:noodles, amount:"2 cakes"} : Nil), cookingState: Nothing}
       roundTripTest {useCase:Shopping, shoppingState: CheckKitchen Nil, cookingState: Nothing}
       roundTripTest {useCase:Shopping, shoppingState: BuyGroceries ({ingredient:rice, amount:"1 cup"} : Nil) Nil, cookingState: Nothing}
+      roundTripTest 
+        { useCase:Shopping, shoppingState: BuyGroceries ({ingredient:rice, amount:"1 cup"} : Nil) Nil
+        , cookingState: Just {recipe: "chili", steps: ({completed: true, ordinal: 1, description: "part 1"} : {completed: false, ordinal: 2, description: "part 2"} : Nil)}
+        }
