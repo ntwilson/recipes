@@ -2,14 +2,16 @@ module Recipes.Backend.LoadState where
 
 import Backend.Prelude
 
+import Control.MonadZero (guard)
 import Data.Array as Array
 import Data.List (List)
 import Data.List as List
+import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.DB (appState, execQuery, execUpdate, ingredient, recipe, recipeIngredients, withConnection)
+import Recipes.Backend.DB (appState, execQuery, execUpdate, ingredient, recipe, recipeIngredients, recipeSteps, withConnection)
+import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, SerializedAppState, CookingState)
 import Recipes.StateSerialization (decodeAppState, encodeAppState)
-import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, SerializedAppState)
-import Selda (selectFrom)
+import Selda (restrict, selectFrom, (.==))
 import Selda as Selda
 
 
@@ -42,3 +44,24 @@ setState state = withConnection $ \conn -> do
   let stateRecord = encodeAppState state
   execUpdate conn appState (const $ Selda.lit true)  
     (const {name: Selda.lit stateRecord.name, ingredients: Selda.lit stateRecord.ingredients, recipeSteps: Selda.lit stateRecord.recipeSteps}) 
+
+getSteps :: String -> Aff CookingState
+getSteps recipeName = withConnection $ \conn -> do
+  steps <- execQuery conn $ selectFrom recipeSteps \step -> do
+    restrict $ step.recipeName .== Selda.lit recipeName
+    pure step
+
+  guard (Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # liftError
+
+  let 
+    cookingStateSteps = steps <#> \step ->
+      { completed: false, ordinal: step.stepNumber, description: step.stepDescription }
+
+  pure { recipe: recipeName, steps: List.fromFoldable cookingStateSteps }
+
+getRecipesWithSteps :: Aff $ Array String 
+getRecipesWithSteps = withConnection $ \conn -> do
+  recipes <- execQuery conn $ selectFrom recipeSteps \{recipeName} -> do
+    pure {recipeName}
+
+  pure $ Array.fromFoldable (Set.fromFoldable (recipes <#> _.recipeName))

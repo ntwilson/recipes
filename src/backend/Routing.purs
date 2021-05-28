@@ -9,8 +9,8 @@ import Data.String.CaseInsensitive (CaseInsensitiveString(..))
 import HTTPure (Method(..))
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Recipes.API (AddItemValue, SetItemStatusValue, SetRecipeStepStatusValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, resetRecipeRoute, resetStateRoute, setItemStatusRoute, setRecipeStepStatusRoute, submitPantryRoute, submitRecipesRoute)
-import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getSerializedState, getState, setState)
+import Recipes.API (AddItemValue, SetItemStatusValue, SetRecipeStepStatusValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, recipesWithStepsRoute, resetRecipeRoute, resetStateRoute, selectRecipeRoute, setItemStatusRoute, setRecipeStepStatusRoute, submitPantryRoute, submitRecipesRoute)
+import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getSerializedState, getState, getSteps, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
 
@@ -145,6 +145,16 @@ router dist rqst =
 
         replaceStep newStep steps = 
           steps <#> \step -> if step.ordinal == newStep.ordinal then newStep else step
+
+    rtr Get route | route == recipesWithStepsRoute = do
+      recipes <- getRecipesWithSteps 
+      HTTPure.ok $ Json.stringify $ encodeJson recipes
+
+    rtr Post route | route == selectRecipeRoute = do
+      state <- getState
+      steps <- getSteps rqst.body
+      setState $ state { useCase = Cooking, cookingState = Just steps }
+      HTTPure.noContent
 
     rtr _ _ = HTTPure.notFound
     

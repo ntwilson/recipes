@@ -2,7 +2,7 @@ module Recipes.API where
 
 import Shared.Prelude
 
-import Recipes.DataStructures (CookingState, Ingredient, SerializedAppState, StoreItem, RecipeStep)
+import Recipes.DataStructures (CurrentUseCase, Ingredient, RecipeStep, SerializedAppState, StoreItem)
 
 recipesRoute :: Array String
 recipesRoute = ["api", "recipes"]
@@ -37,9 +37,20 @@ resetStateRoute = ["api", "reset-state"]
 resetRecipeRoute :: Array String
 resetRecipeRoute = ["api", "reset-recipe"]
 
+recipesWithStepsRoute :: Array String
+recipesWithStepsRoute = ["api", "recipes-with-steps"]
+
+selectRecipeRoute :: Array String
+selectRecipeRoute = ["api", "select-recipe"]
+type SelectRecipeValue = String
+
 setRecipeStepStatusRoute :: Array String
 setRecipeStepStatusRoute = ["api", "set-recipe-status"]
 type SetRecipeStepStatusValue = RecipeStep
+
+setUseCaseRoute :: Array String
+setUseCaseRoute = ["api", "set-use-case"]
+type SetUseCaseValue = CurrentUseCase
 
 routeStr :: Array String -> String
 routeStr segments = i "/"(intercalate "/" segments)

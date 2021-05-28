@@ -2,6 +2,8 @@ module Recipes.DataStructures where
 
 import Shared.Prelude
 
+import Data.Argonaut (JsonDecodeError(..))
+import Data.Argonaut as Json
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (List)
@@ -66,6 +68,16 @@ data CurrentUseCase = Shopping | Cooking
 derive instance eqCurrentUseCase :: Eq CurrentUseCase
 derive instance genericCurrentUseCase :: Generic CurrentUseCase _ 
 instance showCurrentUseCase :: Show CurrentUseCase where show = genericShow
+instance decodeUseCase :: DecodeJson CurrentUseCase where
+  decodeJson json = case Json.toString json of
+    Just "Shopping" -> Right Shopping
+    Just "Cooking" -> Right Cooking
+    Just str -> Left $ TypeMismatch "value: 'Shopping'|'Cooking'"
+    Nothing -> Left $ TypeMismatch "String"
+
+instance encodeUseCase :: EncodeJson CurrentUseCase where
+  encodeJson Shopping = encodeJson "Shopping"
+  encodeJson Cooking  = encodeJson "Cooking"
 
 type AppState = { useCase :: CurrentUseCase, shoppingState :: ShoppingState, cookingState :: Maybe CookingState }
 
