@@ -24,7 +24,7 @@ input {
   border: none; 
   background-color: black;
   color: white;
-  font-size: x-large;
+  font-size: large;
 }
 
 .nav-button:hover { 
