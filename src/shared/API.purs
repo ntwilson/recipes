@@ -52,6 +52,10 @@ setUseCaseRoute :: Array String
 setUseCaseRoute = ["api", "set-use-case"]
 type SetUseCaseValue = CurrentUseCase
 
+recipeStepsRoute :: Array String
+recipeStepsRoute = ["api", "recipe-steps"]
+type RecipeStepsValue = Array RecipeStep
+
 routeStr :: Array String -> String
 routeStr segments = i "/"(intercalate "/" segments)
 

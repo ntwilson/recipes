@@ -8,7 +8,7 @@ import Data.List (List(..))
 import Data.List as List
 import Data.String (Pattern(..), split, stripPrefix)
 import Data.String as String
-import Recipes.DataStructures (AppState, CookingState, CurrentUseCase(..), Ingredient, SerializedAppState, ShoppingState(..), StoreItem, RecipeStep)
+import Recipes.DataStructures (AppState, CookingState, CurrentUseCase(..), Ingredient, RecipeStep, SerializedAppState, ShoppingState(..), StoreItem)
 
 decodeCustomItem :: ∀ m a. Throws String m a => String -> m StoreItem
 decodeCustomItem item 
@@ -134,4 +134,9 @@ encodeAppState {useCase: Shopping, shoppingState: shopping@(BuyGroceries _ _), c
   { name: "buy groceries", ingredients: encodeShopping shopping, recipeSteps: encodeCooking <$> cookingState }
 
 encodeAppState ({useCase: Cooking, cookingState, shoppingState}) = 
-  { name: "cooking", ingredients: encodeShopping shoppingState, recipeSteps: encodeCooking <$> cookingState }
+  { name, ingredients: encodeShopping shoppingState, recipeSteps: encodeCooking <$> cookingState }
+  where 
+    name = case shoppingState of 
+      InputRecipes -> "cooking(input recipes)"
+      CheckKitchen _ -> "cooking(check kitchen)"
+      BuyGroceries _ _ -> "cooking(buy groceries)"

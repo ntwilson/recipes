@@ -11,7 +11,7 @@ import Recipes.API (RecipesValue)
 import Recipes.Backend.DB (appState, execQuery, execUpdate, ingredient, recipe, recipeIngredients, recipeSteps, withConnection)
 import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, SerializedAppState, CookingState)
 import Recipes.StateSerialization (decodeAppState, encodeAppState)
-import Selda (restrict, selectFrom, (.==))
+import Selda (asc, orderBy, restrict, selectFrom, (.==))
 import Selda as Selda
 
 
@@ -49,9 +49,10 @@ getSteps :: String -> Aff CookingState
 getSteps recipeName = withConnection $ \conn -> do
   steps <- execQuery conn $ selectFrom recipeSteps \step -> do
     restrict $ step.recipeName .== Selda.lit recipeName
+    orderBy asc step.stepNumber 
     pure step
 
-  guard (Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # liftError
+  guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # liftError
 
   let 
     cookingStateSteps = steps <#> \step ->
@@ -61,7 +62,6 @@ getSteps recipeName = withConnection $ \conn -> do
 
 getRecipesWithSteps :: Aff $ Array String 
 getRecipesWithSteps = withConnection $ \conn -> do
-  recipes <- execQuery conn $ selectFrom recipeSteps \{recipeName} -> do
-    pure {recipeName}
+  recipes <- execQuery conn $ selectFrom recipeSteps \{recipeName} -> pure {recipeName}
 
   pure $ Array.fromFoldable (Set.fromFoldable (recipes <#> _.recipeName))

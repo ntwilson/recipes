@@ -9,7 +9,7 @@ import Data.String.CaseInsensitive (CaseInsensitiveString(..))
 import HTTPure (Method(..))
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Recipes.API (AddItemValue, SetItemStatusValue, SetRecipeStepStatusValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, recipesWithStepsRoute, resetRecipeRoute, resetStateRoute, selectRecipeRoute, setItemStatusRoute, setRecipeStepStatusRoute, submitPantryRoute, submitRecipesRoute)
+import Recipes.API (AddItemValue, SetItemStatusValue, SetRecipeStepStatusValue, SetUseCaseValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, recipesWithStepsRoute, resetRecipeRoute, resetStateRoute, selectRecipeRoute, setItemStatusRoute, setRecipeStepStatusRoute, setUseCaseRoute, submitPantryRoute, submitRecipesRoute)
 import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getSerializedState, getState, getSteps, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
@@ -19,6 +19,7 @@ router dist rqst =
   catchError (rtr rqst.method rqst.path) errHandler
   where
     rtr Get [] = serveHtml (i dist"/index.html")
+    rtr Get ["index.css"] = serveCss (i dist"/index.css")
     rtr Get ["main.js"] = serveJavascript (i dist"/main.js")
 
     rtr Get route | route == recipesRoute = do
@@ -156,12 +157,27 @@ router dist rqst =
       setState $ state { useCase = Cooking, cookingState = Just steps }
       HTTPure.noContent
 
+    rtr Post route | route == setUseCaseRoute = go
+      where 
+        go
+          | Right json <- Json.parseJson rqst.body 
+          , Right (submittedItem :: SetUseCaseValue) <- decodeJson json = do
+            state <- getState
+            setState $ state { useCase = submittedItem } 
+            HTTPure.noContent
+          
+          | otherwise = HTTPure.badRequest (i"Could not parse request body: "rqst.body :: String)
+
     rtr _ _ = HTTPure.notFound
     
-    errHandler err = HTTPure.internalServerError $ show err
+    errHandler err = do
+      log (i"-----------\nServer Error: "(show err)"\n-----------")
+      HTTPure.internalServerError $ show err
 
 serveHtml :: String -> HTTPure.ResponseM
 serveHtml = serveStaticContent "text/html"
+serveCss :: String -> HTTPure.ResponseM
+serveCss = serveStaticContent "text/css"
 serveJavascript :: String -> HTTPure.ResponseM
 serveJavascript = serveStaticContent "text/javascript"
 
