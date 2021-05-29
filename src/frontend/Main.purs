@@ -109,6 +109,8 @@ content = do
 
         {useCase: Cooking, cookingState: Just cookingState} -> recipeStepList cookingState
       ]
+    <|>
+    div [Props.style { height: "5em" }] []
   )
 
 main :: Effect Unit

@@ -6,6 +6,10 @@ html {
 button { 
   font-size: large;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border: none;
+  background-color: lightgrey;
+  padding: 0.5em 0.8em 0.5em 0.8em;
+  cursor: pointer;
 }
 
 input { 
