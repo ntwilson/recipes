@@ -2,7 +2,7 @@ module Recipes.API where
 
 import Shared.Prelude
 
-import Recipes.DataStructures (Ingredient, SerializedAppState, StoreItem)
+import Recipes.DataStructures (CurrentUseCase, Ingredient, RecipeStep, SerializedAppState, StoreItem)
 
 recipesRoute :: Array String
 recipesRoute = ["api", "recipes"]
@@ -13,26 +13,48 @@ ingredientsRoute = ["api", "ingredients"]
 type IngredientsValue = Array Ingredient
 
 submitRecipesRoute :: Array String
-submitRecipesRoute = ["api", "submitRecipes"]
+submitRecipesRoute = ["api", "submit-recipes"]
 type SubmitRecipesValue = Array String
 
 submitPantryRoute :: Array String
-submitPantryRoute = ["api", "submitPantry"]
+submitPantryRoute = ["api", "submit-pantry"]
 
 setItemStatusRoute :: Array String
-setItemStatusRoute = ["api", "setItemStatus"]
+setItemStatusRoute = ["api", "set-item-status"]
 type SetItemStatusValue = { checked :: Boolean, item :: StoreItem, isCustom :: Boolean }
 
 addItemRoute :: Array String
-addItemRoute = ["api", "addItem"]
+addItemRoute = ["api", "add-item"]
 type AddItemValue = Ingredient
 
 currentStateRoute :: Array String
-currentStateRoute = ["api", "currentState"]
+currentStateRoute = ["api", "current-state"]
 type CurrentStateValue = SerializedAppState
 
 resetStateRoute :: Array String
-resetStateRoute = ["api", "resetState"]
+resetStateRoute = ["api", "reset-state"]
+
+resetRecipeRoute :: Array String
+resetRecipeRoute = ["api", "reset-recipe"]
+
+recipesWithStepsRoute :: Array String
+recipesWithStepsRoute = ["api", "recipes-with-steps"]
+
+selectRecipeRoute :: Array String
+selectRecipeRoute = ["api", "select-recipe"]
+type SelectRecipeValue = String
+
+setRecipeStepStatusRoute :: Array String
+setRecipeStepStatusRoute = ["api", "set-recipe-status"]
+type SetRecipeStepStatusValue = RecipeStep
+
+setUseCaseRoute :: Array String
+setUseCaseRoute = ["api", "set-use-case"]
+type SetUseCaseValue = CurrentUseCase
+
+recipeStepsRoute :: Array String
+recipeStepsRoute = ["api", "recipe-steps"]
+type RecipeStepsValue = Array RecipeStep
 
 routeStr :: Array String -> String
 routeStr segments = i "/"(intercalate "/" segments)

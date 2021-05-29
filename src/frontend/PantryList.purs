@@ -19,7 +19,7 @@ pantryList :: List SetItemStatusValue -> Widget HTML Unit
 pantryList items = do 
   action <- 
     fold 
-      [ h1' [text "Are any of these in your kitchen already?"]
+      [ h3' [text "Are any of these in your kitchen already?"]
       , fold (commonItems <#> (\itemsForStore -> ingredientListItem itemsForStore <#> AnotherItem))
       , br'
       , (div' [button [Props.onClick] [text "Ready to shop"]] $> FinishWithList)

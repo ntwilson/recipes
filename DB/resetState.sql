@@ -1,1 +1,1 @@
-UPDATE appState SET name='input recipes', ingredients='';
+UPDATE appState SET name='input recipes', ingredients='', recipeSteps='';

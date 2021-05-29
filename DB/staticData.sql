@@ -272,3 +272,9 @@ INSERT INTO settings (name, value) VALUES (
   '1.0'
 );
 COMMIT;
+
+DELETE FROM recipeSteps;
+BEGIN;
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Simple Chili', 1, 'Brown the beef in a pot');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Simple Chili', 2, 'Empty the rest of the ingredients into the pot');
+COMMIT;

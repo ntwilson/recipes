@@ -5,6 +5,7 @@ module Recipes.Backend.DB
   , recipe
   , ingredient
   , recipeIngredients
+  , recipeSteps
   , settings
   , appState) where
 
@@ -13,7 +14,7 @@ import Backend.Prelude
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import Database.PostgreSQL (class FromSQLRow, Connection)
-import Recipes.DataStructures (IngredientRow, RecipeIngredientsRow, RecipeRow, SettingsRow, AppStateRow)
+import Recipes.DataStructures (AppStateRow, IngredientRow, RecipeIngredientsRow, RecipeRow, SettingsRow, RecipeStepsRow)
 import Recipes.ErrorHandling (liftError)
 import Selda (Col, FullQuery, Table(..))
 import Selda.Col (class GetCols)
@@ -85,4 +86,5 @@ settings = Table { name: "settings" }
 appState :: Table AppStateRow
 appState = Table { name: "appState" }
 
-
+recipeSteps :: Table RecipeStepsRow
+recipeSteps = Table { name: "recipeSteps" }

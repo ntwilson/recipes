@@ -82,7 +82,7 @@ groceryList :: List SetItemStatusValue -> Widget HTML Unit
 groceryList items = do 
   action <- 
     fold 
-      [ h1' [text "Grocery list"]
+      [ h2' [text "Grocery list"]
       , fold (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> CheckItem))
       , (addItemForm <#> NewItem)
       , (div' [button [Props.onClick] [text "Restart"]] $> Finished)

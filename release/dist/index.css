@@ -1,0 +1,44 @@
+html { 
+  font-size: large;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+button { 
+  font-size: large;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+input { 
+  margin: 0.8em 0.5em 0.8em 0em;
+  width: 1.2em;
+  height: 1.2em;
+  cursor: pointer;
+}
+
+.nav-button { 
+  padding: 1em; 
+  border: none; 
+  background-color: black;
+  color: white;
+  font-size: x-large;
+}
+
+.nav-button:hover { 
+  background-color: #333;
+  cursor: pointer;
+}
+
+.recipe-button {
+  padding: 0.5em 1em 0.5em 1em; 
+  border: none; 
+  background-color: white 
+}
+
+.recipe-button:hover {
+  background-color: lightgrey; 
+  cursor: pointer;
+}
+
+.checkbox-text:hover {
+  cursor: pointer;
+}
