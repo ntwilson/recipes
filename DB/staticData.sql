@@ -277,4 +277,17 @@ DELETE FROM recipeSteps;
 BEGIN;
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Simple Chili', 1, 'Brown the beef in a pot');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Simple Chili', 2, 'Empty the rest of the ingredients into the pot');
+
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 1, 'Cut the bacon into small pieces and add them to your Instant Pot');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 2, 'If sausage is encased, take the sausages out of their casings. Slice lengthwise to make a slit in their casings to get them out');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 3, 'Break the sausage into bite-size pieces and add them to your Instant Pot');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 4, 'Press the "saute" button and cook the sausages and bacon until they''re crispy and browned');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 5, 'While the sausages and bacon cook, chop the onion and potatoes, making sure to stir the bacon and sausages occasionally');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 6, 'When the sausages and bacon are nicely browned and crispy, add in your chicken stock and water');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 7, 'Add the onion, potatoes, garlic, and Italian seasoning');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 8, 'Stir the soup and close the Instant Pot''s lid. Make sure the valve is set to "sealing"');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 9, 'Cook for 8 minutes on high pressure. The Instant Pot will take about 10 minutes or so to come up to pressure');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 10, 'Carefully do a quick pressure release and take off the lid');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 11, 'Add the cream and kale. Close the lid again and let the soup sit for another 5 minutes or so until the kale wilts');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 12, 'Season with salt & pepper');
 COMMIT;
