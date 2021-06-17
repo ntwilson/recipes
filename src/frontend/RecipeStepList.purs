@@ -45,7 +45,7 @@ recipeStepList state@{recipe, steps} = do
 recipeStepListItem :: RecipeStep -> Widget HTML SetRecipeStepStatusValue
 recipeStepListItem step = do
   div [Props.className "checkbox-container"] 
-    [ input [Props._type "checkbox", void Props.onChange, Props.checked step.completed] 
+    [ input [Props._type "checkbox", void Props.onChange, Props.checked step.completed, Props.className "multiline"] 
     , span [void Props.onClick, Props.className "checkbox-text"] [text step.description]
     ]
 
