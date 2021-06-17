@@ -44,6 +44,10 @@ input {
   cursor: pointer;
 }
 
+.checkbox-container {
+  margin: 1.5em 0;
+}
+
 .checkbox-text:hover {
   cursor: pointer;
 }
