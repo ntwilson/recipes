@@ -23,9 +23,9 @@ launchAffWithHandler handler aff =
 -- | any error type. By constraining the error type to an instance of `Throwable`, you can work with a polymorphic error
 -- | type but still be able to create new errors given any showable thing.
 class (Show a) <= Throwable a b where fromThrowable :: a -> b
-instance errorFromThrowable :: Show a => Throwable a Error where fromThrowable = error <<< show
-else instance unitFromThrowable :: Show a => Throwable a Unit where fromThrowable _ = unit
-else instance anythingElseFromThrowable :: Show a => Throwable a a where fromThrowable = identity
+instance Show a => Throwable a Error where fromThrowable = error <<< show
+else instance Show a => Throwable a Unit where fromThrowable _ = unit
+else instance Show a => Throwable a a where fromThrowable = identity
 
 -- | same as `fromThrowable`, but constrained to work with `String` as a more readable alias and potentially fewer type annotations
 fromMessage :: ∀ e. Throwable String e => String -> e
@@ -48,7 +48,7 @@ fromMessage = fromThrowable
 -- | (This class is just a combination of `MonadError` and `Throwable`. Any type will have a `Throws` instance as long
 -- | as it has instances for the other two)
 class (MonadError prop monad, Throwable thrown prop) <= Throws thrown monad prop | monad -> prop
-instance throws :: (MonadError prop monad, Throwable thrown prop) => Throws thrown monad prop
+instance (MonadError prop monad, Throwable thrown prop) => Throws thrown monad prop
 
 -- | Take a concrete Either and lift it into your monad of choice.
 liftError :: ∀ monad prop thrown a. Throws thrown monad prop => Either thrown a -> monad a

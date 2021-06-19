@@ -33,22 +33,22 @@ data ShoppingState
   | CheckKitchen (List StoreItem) 
   | BuyGroceries (List StoreItem) (List StoreItem)
 
-derive instance eqShopping :: Eq ShoppingState
-derive instance genericShopping :: Generic ShoppingState _ 
-instance showShopping :: Show ShoppingState where show = genericShow
+derive instance Eq ShoppingState
+derive instance Generic ShoppingState _ 
+instance Show ShoppingState where show = genericShow
 
 data CurrentUseCase = Shopping | Cooking 
-derive instance eqCurrentUseCase :: Eq CurrentUseCase
-derive instance genericCurrentUseCase :: Generic CurrentUseCase _ 
-instance showCurrentUseCase :: Show CurrentUseCase where show = genericShow
-instance decodeUseCase :: DecodeJson CurrentUseCase where
+derive instance Eq CurrentUseCase
+derive instance Generic CurrentUseCase _ 
+instance Show CurrentUseCase where show = genericShow
+instance DecodeJson CurrentUseCase where
   decodeJson json = case Json.toString json of
     Just "Shopping" -> Right Shopping
     Just "Cooking" -> Right Cooking
     Just _str -> Left $ TypeMismatch "value: 'Shopping'|'Cooking'"
     Nothing -> Left $ TypeMismatch "String"
 
-instance encodeUseCase :: EncodeJson CurrentUseCase where
+instance EncodeJson CurrentUseCase where
   encodeJson Shopping = encodeJson "Shopping"
   encodeJson Cooking  = encodeJson "Cooking"
 

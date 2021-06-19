@@ -7,8 +7,8 @@ import Data.Map (Map, values)
 import Data.FunctorWithIndex (mapWithIndex)
 
 class BodyType a where bodyStr :: Response a -> String
-instance strBody :: BodyType String where bodyStr resp = resp.body
-else instance otherBody :: BodyType a where bodyStr _ = ""
+instance BodyType String where bodyStr resp = resp.body
+else instance BodyType a where bodyStr _ = ""
 
 expectRequest :: ∀ a. BodyType a => Request a -> Aff Unit
 expectRequest rqst = do
