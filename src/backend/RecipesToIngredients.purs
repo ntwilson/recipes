@@ -6,7 +6,7 @@ import Data.List (List)
 import Data.List as List
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty as NEList
-import Data.NonEmpty (foldl1)
+import Data.Semigroup.Foldable (foldl1)
 import Recipes.DataStructures (Ingredient, RecipeIngredients, StoreItem)
 
 recipesToIngredients :: List RecipeIngredients -> List Ingredient -> List String -> List StoreItem

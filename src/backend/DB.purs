@@ -1,90 +1,82 @@
-module Recipes.Backend.DB 
-  ( withConnection
-  , execQuery
-  , execUpdate
-  , recipe
-  , ingredient
-  , recipeIngredients
-  , recipeSteps
-  , settings
-  , appState) where
+module Recipes.Backend.DB where
 
 import Backend.Prelude
 
+import Control.Monad.Except (runExceptT)
 import Control.Promise (Promise)
 import Control.Promise as Promise
-import Database.PostgreSQL (class FromSQLRow, Connection)
-import Recipes.DataStructures (AppStateRow, IngredientRow, RecipeIngredientsRow, RecipeRow, SettingsRow, RecipeStepsRow)
-import Recipes.ErrorHandling (liftError)
-import Selda (Col, FullQuery, Table(..))
-import Selda.Col (class GetCols)
-import Selda.PG.Aff (query, update)
-import Selda.PG.Utils (class ColsToPGHandler, class TableToColsWithoutAlias)
+import Database.Postgres (Client, Query(..), execute, query_)
+import Database.Postgres.SqlValue (SqlValue)
+import Foreign (renderForeignError)
+import Foreign.Generic (class Decode, Foreign, decode)
 
-data Client 
-foreign import newClient :: ∀ a. Record a -> Effect Client
-foreign import connect :: Client -> Effect $ Promise Connection
-foreign import disconnect :: Connection -> Effect $ Promise Unit
+data ConnectReady
+foreign import newClient :: ∀ a. Record a -> Effect ConnectReady
+foreign import connect :: ConnectReady -> Effect $ Promise Client
+foreign import disconnect :: Client -> Effect $ Promise Unit
+foreign import unsafeStringify :: ∀ a. a -> String
 
+type Connection = Client
 
-connection :: ∀ eff. MonadAff eff => eff Connection
-connection = do
+client :: ∀ aff. MonadAff aff => aff ConnectReady
+client = do
   mode <- env "MODE"
   if mode /= Just "development"
   then do
     connectionString <- fromMaybe "" <$> env "DATABASE_URL"
-    client <- liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
-    liftAff $ (join $ liftEffect $ Promise.toAff <$> connect client)
+    liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
   else do
     database <- fromMaybe "recipes" <$> env "DATABASE_NAME"
     user <- fromMaybe "" <$> env "DATABASE_USER"
     password <- fromMaybe "" <$> env "DATABASE_PASSWORD"
-    client <- liftEffect $ newClient { user, database, password }
-    liftAff $ (join $ liftEffect $ Promise.toAff <$> connect client)
+    liftEffect $ newClient { user, database, password }
   
   where
     env = liftEffect <<< lookupEnv
 
-withConnection :: ∀ eff a. MonadAff eff => (Connection -> eff a) -> eff a
+
+connection :: ∀ aff. MonadAff aff => aff Connection 
+connection = do
+  cl <- client
+  liftAff $ (join $ liftEffect $ Promise.toAff <$> connect cl)
+
+withConnection :: ∀ aff a. MonadAff aff => (Connection -> aff a) -> aff a
 withConnection action = do
   conn <- connection
   ans <- action conn
   liftAff $ (join $ liftEffect $ Promise.toAff <$> disconnect conn)
   pure ans
 
-execQuery ∷ ∀ o i tup s
-  . ColsToPGHandler s i tup o
-  => GetCols i
-  => FromSQLRow tup
-  => Connection → FullQuery s (Record i) → Aff $ Array { | o }
-execQuery conn qry = query conn qry >>= liftError
+decodeWithError :: ∀ a. Decode a => Foreign -> Either Error a
+decodeWithError f = lmap (error <<< renderManyErrors) $ unwrap $ runExceptT $ decode f
+  where 
+  renderManyErrors = intercalate ";\n" <<< map renderForeignError
 
-execUpdate
-  ∷ ∀ r s r'
-  . TableToColsWithoutAlias r r'
-  => GetCols r'
-  => Connection 
-  → Table r 
-  → ({ | r' } → Col s Boolean) 
-  → ({ | r' } → { | r' })
-  → Aff Unit
-execUpdate conn table pred up = update conn table pred up >>= liftError
+execQuery :: ∀ a. Decode a => Client -> Query a -> Aff $ Array a
+execQuery conn qry@(Query qryStr) = do
+  log $ i"Executing> "qryStr
+  query_ decodeWithError qry conn
 
+execUpdate :: ∀ s. Client -> Query s -> Array SqlValue -> Aff Unit
+execUpdate conn query@(Query qryStr) vals = do
+  log $ i"Executing> "qryStr
+  log $ i"  with values> "(show (unsafeStringify <$> vals))
+  execute query vals conn
 
-recipe :: Table RecipeRow
-recipe = Table { name: "recipe" }
+recipeTable :: String
+recipeTable = "recipe"
 
-ingredient :: Table IngredientRow
-ingredient = Table { name: "ingredient" }
+ingredientTable :: String
+ingredientTable = "ingredient"
 
-recipeIngredients :: Table RecipeIngredientsRow
-recipeIngredients = Table { name: "recipeIngredients" }
+recipeIngredientsTable :: String
+recipeIngredientsTable = "recipeIngredients"
 
-settings :: Table SettingsRow
-settings = Table { name: "settings" }
+settingsTable :: String
+settingsTable = "settings"
 
-appState :: Table AppStateRow
-appState = Table { name: "appState" }
+appStateTable :: String
+appStateTable = "appState"
 
-recipeSteps :: Table RecipeStepsRow
-recipeSteps = Table { name: "recipeSteps" }
+recipeStepsTable :: String
+recipeStepsTable = "recipeSteps"

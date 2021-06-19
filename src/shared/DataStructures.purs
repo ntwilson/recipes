@@ -5,50 +5,23 @@ import Shared.Prelude
 import Data.Argonaut (JsonDecodeError(..))
 import Data.Argonaut as Json
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
+import Data.Show.Generic (genericShow)
 import Data.List (List)
 
-type Recipe = Record RecipeRow
-type RecipeRow =
-  ( name :: String
-  , fullDescription :: String
-  )
+type Recipe = { name :: String, fullDescription :: String }
+type RecipeDB = { name :: String, fulldescription :: String } 
 
-type Ingredient = Record IngredientRow
-type IngredientRow =
-  ( name :: String
-  , store :: String
-  , section :: Maybe String
-  , common :: Boolean
-  )
+type Ingredient = { name :: String, store :: String, section :: Maybe String, common :: Boolean }
 
-type RecipeIngredients = Record RecipeIngredientsRow
-type RecipeIngredientsRow =
-  ( recipe :: String
-  , ingredient :: String
-  , quantity :: Number
-  , units :: Maybe String
-  )
+type RecipeIngredients = { recipe :: String, ingredient :: String, quantity :: Number, units :: Maybe String }
 
-type Settings = Record SettingsRow
-type SettingsRow =  
-  ( name :: String
-  , value :: String
-  )
+type Settings = { name :: String, value :: String }
 
-type RecipeSteps = Record RecipeStepsRow
-type RecipeStepsRow = 
-  ( recipeName :: String
-  , stepNumber :: Int
-  , stepDescription :: String
-  )
+type RecipeSteps = { recipeName :: String, stepNumber :: Int, stepDescription :: String }
+type RecipeStepsDB = { recipename :: String, stepnumber :: Int, stepdescription :: String }
 
-type SerializedAppState = Record AppStateRow
-type AppStateRow = 
-  ( name :: String
-  , ingredients :: Maybe String 
-  , recipeSteps :: Maybe String
-  )
+type SerializedAppState = { name :: String, ingredients :: Maybe String, recipeSteps :: Maybe String }
+type SerializedAppStateDB = { name :: String, ingredients :: Maybe String, recipesteps :: Maybe String }
 
 
 type RecipeStep = { completed :: Boolean, ordinal :: Int, description :: String }
@@ -72,7 +45,7 @@ instance decodeUseCase :: DecodeJson CurrentUseCase where
   decodeJson json = case Json.toString json of
     Just "Shopping" -> Right Shopping
     Just "Cooking" -> Right Cooking
-    Just str -> Left $ TypeMismatch "value: 'Shopping'|'Cooking'"
+    Just _str -> Left $ TypeMismatch "value: 'Shopping'|'Cooking'"
     Nothing -> Left $ TypeMismatch "String"
 
 instance encodeUseCase :: EncodeJson CurrentUseCase where

@@ -17,3 +17,6 @@ exports.disconnect = function(client) {
     return client.end();
   }
 }
+
+exports.unsafeStringify = function(a) { return JSON.stringify(a); }
+

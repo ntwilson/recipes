@@ -115,7 +115,7 @@ router dist rqst =
                 | Just existingSection <- List.findMap (sameSection customSection) allExisting -> Just existingSection
                 | otherwise -> Just customSection
 
-            sameSection custSection {section: Nothing} = Nothing
+            sameSection _custSection {section: Nothing} = Nothing
             sameSection custSection {section: Just existingSection} 
               | equating CaseInsensitiveString existingSection custSection = Just existingSection
               | otherwise = Nothing

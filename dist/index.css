@@ -12,7 +12,7 @@ button {
   cursor: pointer;
 }
 
-input { 
+input[type="checkbox"] { 
   margin: 0.8em 0.8em 0.8em 0em;
   width: 1.2em;
   height: 1.2em;

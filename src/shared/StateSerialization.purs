@@ -53,7 +53,7 @@ decodeSteps steps = for (List.fromFoldable $ split (Pattern ";") steps) $ \step 
     | Just completed <- decodeBool encodedCompletion, Just ordinal <- Int.fromString encodedOrdinal ->
       pure { completed, ordinal, description }
 
-    [completion, ordinal, description] -> throw (i"unrecognized completion/ordinal: '"completion"'/'"ordinal"'" :: String)
+    [completion, ordinal, _description] -> throw (i"unrecognized completion/ordinal: '"completion"'/'"ordinal"'" :: String)
     _ -> throw (i"Invalid app state (recipe steps), expected completion, ordinal, description separated by '&&'. Got '"step"'" :: String)
 
   where 
@@ -109,7 +109,7 @@ encodeIngredients :: List StoreItem -> List StoreItem -> String
 encodeIngredients ingredients customItems = (encodedNormalIngredients <> encodedCustomIngredients) # intercalate ";"
   where 
   encodedNormalIngredients = ingredients <#> (\{ingredient, amount} -> i(amount)":"(ingredient.name)) 
-  encodedCustomIngredients = customItems <#> (\{ingredient, amount} -> 
+  encodedCustomIngredients = customItems <#> (\{ingredient} -> 
     i"CUSTOM::"(ingredient.name)":"(ingredient.store)":"(fromMaybe "" ingredient.section))
 
 encodeShopping :: ShoppingState -> Maybe String  

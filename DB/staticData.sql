@@ -280,7 +280,7 @@ INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Simpl
 
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 1, 'Cut the bacon into small pieces and add them to your Instant Pot');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 2, 'If sausage is encased, take the sausages out of their casings. Slice lengthwise to make a slit in their casings to get them out');
-INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 3, 'Break the sausage into bite-size pieces and add them to your Instant Pot');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 3, 'Add the sausage to your Instant Pot');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 4, 'Press the "saute" button and cook the sausages and bacon until they''re crispy and browned');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 5, 'While the sausages and bacon cook, chop the onion and potatoes, making sure to stir the bacon and sausages occasionally');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 6, 'When the sausages and bacon are nicely browned and crispy, add in your chicken stock and water');
