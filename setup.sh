@@ -1,1 +1,1 @@
-npm i --no-save purescript@0.13.8 purescript-psa spago@0.19.1
+npm i --no-save purescript@0.14.2 purescript-psa spago@0.19.1
