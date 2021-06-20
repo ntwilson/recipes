@@ -24,7 +24,7 @@ serverOptions = do
   let 
     hostname = fromMaybe "0.0.0.0" hostEnv
     port = fromMaybe 80 (Int.fromString =<< portStr)
-    dist = if mode == Just "development" then "./dist" else "./release/dist"
+    dist = "./dist" -- if mode == Just "development" then "./dist" else "./release/dist"
   pure {opts: {hostname, port, backlog: Nothing}, dist} 
   
   where  

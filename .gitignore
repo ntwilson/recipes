@@ -17,4 +17,5 @@ package-lock.json
 output
 dist/*.js
 dist/*.txt
+release/ 
 
