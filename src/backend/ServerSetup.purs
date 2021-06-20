@@ -20,12 +20,10 @@ serverOptions :: ∀ eff. MonadEffect eff => eff {opts :: HTTP.ListenOptions, di
 serverOptions = do
   portStr <- env "PORT"
   hostEnv <- env "HOST"
-  mode <- env "MODE"
   let 
     hostname = fromMaybe "0.0.0.0" hostEnv
     port = fromMaybe 80 (Int.fromString =<< portStr)
-    dist = if mode == Just "development" then "./dist" else "./release/dist"
-  pure {opts: {hostname, port, backlog: Nothing}, dist} 
+  pure {opts: {hostname, port, backlog: Nothing}, dist: "./dist"} 
   
   where  
     env = liftEffect <<< lookupEnv
