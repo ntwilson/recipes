@@ -7,7 +7,7 @@ import Recipes.API (SetItemStatusValue)
 
 ingredientListItem :: SetItemStatusValue -> Widget HTML SetItemStatusValue
 ingredientListItem storeItem = do
-  div'  
+  div [Props.className "checkbox-container"]  
     [ input [Props._type "checkbox", void Props.onChange, Props.checked storeItem.checked] 
     , span [void Props.onClick, Props.className "checkbox-text"] [text (i storeItem.item.amount" "storeItem.item.ingredient.name)]
     ]

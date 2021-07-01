@@ -7,30 +7,55 @@ button {
   font-size: large;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   border: none;
-  background-color: lightgrey;
-  padding: 0.5em 0.8em 0.5em 0.8em;
+  border-radius: 0.6em;
+  background-color: #444;
+  color: white;
+  padding: 0.5em 2em;
   cursor: pointer;
 }
 
+hr { 
+  width: 97%;
+  border: none;
+  background-color: #777;
+  height: 1px;
+  margin-top: 2em;
+}
+
 input[type="checkbox"] { 
-  margin: 0.8em 0.8em 0.8em 0em;
+  margin: 0 0.8em 0 0;
   width: 1.2em;
   height: 1.2em;
   cursor: pointer;
 }
-input.multiline { 
-  margin: 0 0.8em 0 0;
+
+input[type="text"] {
+  padding: 0.3em 0.5em;
+  font-size: large;
 }
 
-.nav-button { 
+.nav-bar { 
+  width: 100%; 
+  padding: 0 0.5em; 
+  background-color: black;
+}
+
+.nav-bar span {
+  display: inline-block;
+}
+.nav-bar span.highlighted {
+  border-bottom: 0.3em solid lightgrey;
+}
+
+.nav-bar button { 
   padding: 1em; 
   border: none; 
+  border-radius: 0;
   background-color: black;
   color: white;
   font-size: large;
 }
-
-.nav-button:hover { 
+.nav-bar button:hover { 
   background-color: #333;
   cursor: pointer;
 }
@@ -39,6 +64,7 @@ input.multiline {
   padding: 1em; 
   border: none; 
   background-color: white;
+  color: black;
   display: block;
 }
 

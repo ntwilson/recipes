@@ -10,7 +10,7 @@ type RecipeListItem = {name :: String, checked :: Boolean}
 nextRecipe :: ∀ f. Traversable f => f RecipeListItem -> Widget HTML RecipeListItem
 nextRecipe allRecipes = 
   fold (allRecipes <#> \recipe -> 
-    div'
+    div [Props.className "checkbox-container"]
       [ input [Props._type "checkbox", Props.onChange $> recipe, Props.checked recipe.checked] 
       , span [Props.onClick $> recipe, Props.className "checkbox-text"] [text recipe.name]
       ]

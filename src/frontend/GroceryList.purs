@@ -14,7 +14,7 @@ import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
 import Web.HTML (window)
 import Web.HTML.Location (reload)
-import Web.HTML.Window (location)
+import Web.HTML.Window (confirm, location)
 
 
 sectionList :: NonEmptyList SetItemStatusValue -> Widget HTML SetItemStatusValue
@@ -28,7 +28,7 @@ sectionList itemsBySection =
 
 storeList :: NonEmptyList SetItemStatusValue -> Widget HTML SetItemStatusValue
 storeList itemsByStore = 
-  h3' [text store]
+  h2' [text store]
   <>
   fold (bySection (NEList.toList itemsByStore) <#> sectionList)
 
@@ -47,7 +47,7 @@ addItemForm = do
   _ <- button 
     [ Props.onClick 
     , Props.style 
-      { textDecoration: "underline", marginTop: "1em", marginBottom: "1em", border: "none", backgroundColor: "white" }
+      { textDecoration: "underline", marginTop: "1em", marginBottom: "1em", border: "none", backgroundColor: "white", color: "#444" }
     ] 
     [text "Add another item"]
 
@@ -82,23 +82,27 @@ groceryList :: List SetItemStatusValue -> Widget HTML Unit
 groceryList items = do 
   action <- 
     fold 
-      [ h2' [text "Grocery list"]
-      , fold (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> CheckItem))
+      [ intercalate hr' (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> CheckItem))
       , (addItemForm <#> NewItem)
       , (div' [button [Props.onClick] [text "Restart"]] $> Finished)
       ]
 
   case action of 
     Finished -> do
-      liftAff resetState
-      liftEffect (window >>= location >>= reload)
-      groceryList items 
+      continue <- liftEffect (window >>= confirm "Are you sure you wish to reset the grocery list?")
+      if not continue 
+      then groceryList items
+      else do 
+        liftAff resetState
+        liftEffect (window >>= location >>= reload)
+        groceryList items 
 
     CheckItem item -> do
       liftEffect $ checkItem item
       let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == item.item.ingredient.name then item else oldItem
       groceryList updatedItems
 
+    NewItem { name: "", store: "", section: Nothing } -> groceryList items
     NewItem item -> do
       liftAff $ submitItem item
       liftEffect (window >>= location >>= reload)

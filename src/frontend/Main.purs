@@ -72,11 +72,13 @@ inputRecipes = do
   liftAff $ submitRecipes selected
   liftEffect (window >>= location >>= reload)
 
-useCaseBar :: Widget HTML Unit
-useCaseBar = do
-  useCase <- div [Props.style { width: "100%", padding: "0.5em", backgroundColor: "black" }]
-    [ button [Props.onClick $> Shopping, Props.className "nav-button"] [text "Buy Some Food"]
-    , button [Props.onClick $> Cooking, Props.className "nav-button"] [text "Cook Something"]
+useCaseBar :: CurrentUseCase -> Widget HTML Unit
+useCaseBar currentUseCase = do
+  useCase <- div [Props.className "nav-bar" ]
+    [ span (if currentUseCase == Shopping then [Props.className "highlighted"] else [])
+      [ button [Props.onClick $> Shopping, Props.className "nav-button"] [text "SHOP"] ]
+    , span (if currentUseCase == Cooking then [Props.className "highlighted"] else [])
+      [ button [Props.onClick $> Cooking, Props.className "nav-button"] [text "COOK"] ]
     ]
 
   liftAff $ expectRequest $ defaultRequest
@@ -89,7 +91,7 @@ useCaseBar = do
 content :: Widget HTML Unit
 content = do
   appState <- (text "Loading..." <|> liftAff loadState)
-  ( useCaseBar 
+  ( useCaseBar appState.useCase 
     <|>
     div [Props.style { marginLeft: "1em" }] 
       [ case appState of 
