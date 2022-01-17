@@ -290,4 +290,11 @@ INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 10, 'Carefully do a quick pressure release and take off the lid');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 11, 'Add the cream and kale. Close the lid again and let the soup sit for another 5 minutes or so until the kale wilts');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Zuppa Toscana', 12, 'Season with salt & pepper');
+
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 1, 'Set your instant pot to saute and add 4 tbsp. butter, 2 cups onion and 5 cloves garlic. Saute for approximately 5 minutes until the onions are tender');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 2, 'Cut 2 lbs chicken into bite-size pieces');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 3, 'Add the chicken, 15 oz tomato sauce, 3 tbsp tomato paste, 2 tbsp red curry paste, 2 tsp garam masala, 1.5 tsp ginger, 1 tsp salt, and 0.5 tsp paprika. Lock the lid and turn the pressure valve to seal it. Set to high pressure for 7 minutes');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 4, 'When the timer goes off do a natural release for 5 minutes and then turn the valve on top to venting to let the remaining steam out of the pressure cooker');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 5, 'Add 0.5 cup heavy cream and stir');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 6, 'Optionally add cilantro as garnish');
 COMMIT;

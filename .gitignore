@@ -13,6 +13,7 @@ node_modules
 .psa-stash
 .psc-ide-port
 .purs-repl
+.vscode
 package-lock.json
 output
 dist/*.js

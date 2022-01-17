@@ -77,44 +77,38 @@ addItemForm = do
 
     textBox props = input (props <> [Props._type "text", Props.onChange <#> unsafeTargetValue])
 
-data GroceryListAction = NewItem AddItemValue | CheckItem SetItemStatusValue | Finished 
-groceryList :: List SetItemStatusValue -> Widget HTML Unit
-groceryList items = do 
-  action <- 
-    fold 
-      [ intercalate hr' (byStore items <#> (\itemsForStore -> storeList itemsForStore <#> CheckItem))
-      , (addItemForm <#> NewItem)
-      , (div' [button [Props.onClick] [text "Restart"]] $> Finished)
-      ]
+data GroceryListStep 
+  = UpdateList (List SetItemStatusValue) 
+  | ReloadThePage 
 
-  case action of 
-    Finished -> do
-      continue <- liftEffect (window >>= confirm "Are you sure you wish to reset the grocery list?")
-      if not continue 
-      then groceryList items
-      else do 
-        liftAff resetState
-        liftEffect (window >>= location >>= reload)
-        groceryList items 
+type GroceryListAction = Maybe GroceryListStep
 
-    CheckItem item -> do
-      liftEffect $ checkItem item
-      let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == item.item.ingredient.name then item else oldItem
-      groceryList updatedItems
+groceryItems :: List SetItemStatusValue -> Widget HTML GroceryListAction
+groceryItems items = do
+  newCheckedItem <- intercalate hr' (byStore items <#> storeList)
 
-    NewItem { name: "", store: "", section: Nothing } -> groceryList items
-    NewItem item -> do
-      liftAff $ submitItem item
-      liftEffect (window >>= location >>= reload)
-      groceryList items
+  liftEffect $ checkItem newCheckedItem
+  let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == newCheckedItem.item.ingredient.name then newCheckedItem else oldItem
+  pure $ Just $ UpdateList updatedItems
 
   where 
-    resetState = expectRequest $ defaultRequest { url = routeStr resetStateRoute }
+    byStore :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
+    byStore = 
+      List.sortBy (comparing _.item.ingredient.store)
+      >>> List.groupBy (equating _.item.ingredient.store)
 
     checkItem item = launchAff_ $ expectRequest $ defaultRequest 
       { method = Left POST, url = routeStr setItemStatusRoute
       , content = Just $ RequestBody.Json $ encodeJson item
       }
+
+addItemToListForm :: Widget HTML GroceryListAction
+addItemToListForm = do
+  newItem <- addItemForm 
+  liftAff $ submitItem newItem
+  pure $ Just ReloadThePage
+
+  where
 
     submitItem item = 
       expectRequest $ defaultRequest
@@ -122,7 +116,27 @@ groceryList items = do
         , content = Just $ RequestBody.Json $ encodeJson item
         }
 
-    byStore :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
-    byStore = 
-      List.sortBy (comparing _.item.ingredient.store)
-      >>> List.groupBy (equating _.item.ingredient.store)
+resetGroceryListButton :: Widget HTML GroceryListAction
+resetGroceryListButton = do
+  div' [button [Props.onClick] [text "Restart"]] # void
+  continue <- liftEffect (window >>= confirm "Are you sure you wish to reset the grocery list?")
+  if not continue 
+  then pure Nothing
+  else do 
+    liftAff resetState
+    pure $ Just ReloadThePage 
+
+  where
+    resetState = expectRequest $ defaultRequest { url = routeStr resetStateRoute }
+
+
+groceryList :: ∀ a. List SetItemStatusValue -> Widget HTML a
+groceryList items = do 
+  fold [ groceryItems items, addItemToListForm, resetGroceryListButton ]
+  >>= case _ of
+    Nothing -> groceryList items
+    Just (UpdateList newList) -> groceryList newList
+    Just ReloadThePage -> do
+      liftEffect (window >>= location >>= reload)
+      groceryList items
+
