@@ -297,4 +297,14 @@ INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butte
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 4, 'When the timer goes off do a natural release for 5 minutes and then turn the valve on top to venting to let the remaining steam out of the pressure cooker');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 5, 'Add 0.5 cup heavy cream and stir');
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Butter Chicken', 6, 'Optionally add cilantro as garnish');
+
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 1, 'Gather: olive oil, 2-3 garlic cloves, 1-2 cup onion, 1.5 boxes chicken broth, 2 chicken breasts, can navy beans, can Great Northern beans, can diced tomatoes, bag frozen corn, 1 cup shredded Colby/Monterrey Jack, 1.5 bricks creat cheese, chicken bouillon, chicken seasoning, chili powder, cumin, cayenne pepper.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 2, 'Place the Instant Pot on saute setting. Add 2-3 cloves garlic and 1-2 cups onion. Cook for 2-3 minutes until both are soft.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 3, 'Add 1.5 boxes chicken broth. Next add 2 chicken breasts, 2 cans beans, 1 can diced tomatoes, 2 tsp chicken bouillon, dash chicken seasoning, 1 tsp chili powder, 1 tsp cumin, 1 tsp cayenne pepper.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 4, 'Close the pot and seal. Cook on manual, high pressure for 20 minutes.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 5, 'When finished, natural release for 10 minutes, then quick release.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 6, 'Open the pot and remove the chicken breasts. Shred the chicken using a knife and fork, and return the chicken to the Instant Pot.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 7, 'Place the Instant Pot on the saute function. Add 1.5 bricks cream cheese, 1 cup shredded Colby/Monterrey Jack, 1 bag frozen corn.');
+INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Creamy White Chicken Chili', 8, 'Serve once corn is soft and cheese is melted.');
+
 COMMIT;
