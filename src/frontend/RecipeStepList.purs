@@ -5,7 +5,8 @@ import Frontend.Prelude
 import Affjax.RequestBody (RequestBody(..))
 import Concur.React.Props as Props
 import Data.HTTP.Method (Method(..))
-import Recipes.API (SetRecipeStepStatusValue, resetRecipeRoute, routeStr, setRecipeStepStatusRoute)
+import Recipes.API (SetRecipeStepStatusValue)
+import Recipes.API as Routing
 import Recipes.DataStructures (RecipeStep, CookingState)
 import Recipes.Frontend.Http (expectRequest)
 import Web.HTML (window)
@@ -35,11 +36,11 @@ recipeStepList state@{recipe, steps} = do
 
   where
     checkStep step = launchAff_ $ expectRequest $ defaultRequest 
-      { method = Left POST, url = routeStr setRecipeStepStatusRoute
+      { method = Left POST, url = Routing.print Routing.SetRecipeStatus
       , content = Just $ Json $ encodeJson step
       }
 
-    resetRecipe = expectRequest $ defaultRequest { method = Left GET, url = routeStr resetRecipeRoute }
+    resetRecipe = expectRequest $ defaultRequest { method = Left GET, url = Routing.print Routing.ResetRecipe }
 
 
 recipeStepListItem :: RecipeStep -> Widget HTML SetRecipeStepStatusValue

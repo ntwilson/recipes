@@ -7,7 +7,8 @@ import Concur.React.Props as Props
 import Data.HTTP.Method (Method(..))
 import Data.List (List)
 import Data.List as List
-import Recipes.API (SetItemStatusValue, routeStr, setItemStatusRoute, submitPantryRoute)
+import Recipes.API (RecipeRoute(..), SetItemStatusValue)
+import Recipes.API as Routing
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
 import Web.HTML (window)
@@ -27,7 +28,7 @@ pantryList items = do
 
   case action of 
     FinishWithList -> do
-      liftAff $ expectRequest $ defaultRequest { url = routeStr submitPantryRoute }
+      liftAff $ expectRequest $ defaultRequest { url = Routing.print SubmitPantry }
       liftEffect (window >>= location >>= reload)
 
     AnotherItem item -> do
@@ -40,6 +41,6 @@ pantryList items = do
     commonItems = items # List.filter (_.item.ingredient.common)
 
     checkItem item = launchAff_ $ expectRequest $ defaultRequest 
-      { method = Left POST, url = routeStr setItemStatusRoute
+      { method = Left POST, url = Routing.print SetItemStatus
       , content = Just $ RequestBody.Json $ encodeJson item
       }

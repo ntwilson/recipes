@@ -11,7 +11,8 @@ import Data.Argonaut (printJsonDecodeError)
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..))
 import Data.List as List
-import Recipes.API (RecipesValue, currentStateRoute, ingredientsRoute, recipesRoute, recipesWithStepsRoute, routeStr, selectRecipeRoute, setUseCaseRoute, submitRecipesRoute)
+import Recipes.API (RecipesValue)
+import Recipes.API as Routing
 import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..))
 import Recipes.Frontend.GroceryList (groceryList)
 import Recipes.Frontend.Http (expectRequest)
@@ -26,39 +27,39 @@ import Web.HTML.Window (location)
 
 loadRecipes :: Aff RecipesValue
 loadRecipes = do
-  resp <- request $ defaultRequest { url = routeStr recipesRoute, responseFormat = ResponseFormat.json }
+  resp <- request $ defaultRequest { url = Routing.print Routing.Recipes, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
   decodeJson body # liftErrorVia printJsonDecodeError 
 
 submitRecipes :: List String -> Aff Unit
 submitRecipes recipes = 
   expectRequest $ defaultRequest 
-    { method = Left POST, url = routeStr submitRecipesRoute
+    { method = Left POST, url = Routing.print Routing.SubmitRecipes
     , content = Just $ RequestBody.Json $ encodeJson recipes
     }
 
 loadRecipesWithSteps :: Aff RecipesValue 
 loadRecipesWithSteps = do
-  resp <- request $ defaultRequest { url = routeStr recipesWithStepsRoute, responseFormat = ResponseFormat.json }
+  resp <- request $ defaultRequest { url = Routing.print Routing.RecipesWithSteps, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
   decodeJson body # liftErrorVia printJsonDecodeError 
 
 selectRecipe :: String -> Aff Unit
 selectRecipe recipe = 
   expectRequest $ defaultRequest 
-    { method = Left POST, url = routeStr selectRecipeRoute
+    { method = Left POST, url = Routing.print Routing.SelectRecipe
     , content = Just $ RequestBody.String recipe
     }
 
 loadIngredients :: Aff $ List Ingredient
 loadIngredients = do
-  resp <- request $ defaultRequest { url = routeStr ingredientsRoute, responseFormat = ResponseFormat.json }
+  resp <- request $ defaultRequest { url = Routing.print Routing.Ingredients, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
   decodeJson body # liftErrorVia printJsonDecodeError 
 
 loadState :: Aff AppState 
 loadState = do
-  resp <- request $ defaultRequest { url = routeStr currentStateRoute, responseFormat = ResponseFormat.json }
+  resp <- request $ defaultRequest { url = Routing.print Routing.CurrentState, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
   serialized <- decodeJson body # liftErrorVia printJsonDecodeError 
   ingredients <- loadIngredients
@@ -82,7 +83,7 @@ useCaseBar currentUseCase = do
     ]
 
   liftAff $ expectRequest $ defaultRequest
-    { url = routeStr setUseCaseRoute, method = Left POST
+    { url = Routing.print Routing.SetUseCase, method = Left POST
     , content = Just $ Json $ encodeJson useCase
     }
 

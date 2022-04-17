@@ -9,7 +9,8 @@ import Data.HTTP.Method (Method(..))
 import Data.List as List
 import Data.List.NonEmpty as NEList
 import Data.List.Types (List, NonEmptyList)
-import Recipes.API (AddItemValue, SetItemStatusValue, addItemRoute, resetStateRoute, routeStr, setItemStatusRoute)
+import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue)
+import Recipes.API as Routing
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
 import Web.HTML (window)
@@ -98,7 +99,7 @@ groceryItems items = do
       >>> List.groupBy (equating _.item.ingredient.store)
 
     checkItem item = launchAff_ $ expectRequest $ defaultRequest 
-      { method = Left POST, url = routeStr setItemStatusRoute
+      { method = Left POST, url = Routing.print SetItemStatus
       , content = Just $ RequestBody.Json $ encodeJson item
       }
 
@@ -112,7 +113,7 @@ addItemToListForm = do
 
     submitItem item = 
       expectRequest $ defaultRequest
-        { method = Left POST, url = routeStr addItemRoute
+        { method = Left POST, url = Routing.print AddItem
         , content = Just $ RequestBody.Json $ encodeJson item
         }
 
@@ -127,7 +128,7 @@ resetGroceryListButton = do
     pure $ Just ReloadThePage 
 
   where
-    resetState = expectRequest $ defaultRequest { url = routeStr resetStateRoute }
+    resetState = expectRequest $ defaultRequest { url = Routing.print ResetState }
 
 
 groceryList :: ∀ a. List SetItemStatusValue -> Widget HTML a

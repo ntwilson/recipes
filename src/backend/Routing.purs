@@ -9,28 +9,29 @@ import Data.String.CaseInsensitive (CaseInsensitiveString(..))
 import HTTPure (Method(..))
 import HTTPure as HTTPure
 import Node.Encoding (Encoding(..))
-import Recipes.API (AddItemValue, SetItemStatusValue, SetRecipeStepStatusValue, SetUseCaseValue, addItemRoute, currentStateRoute, ingredientsRoute, recipesRoute, recipesWithStepsRoute, resetRecipeRoute, resetStateRoute, selectRecipeRoute, setItemStatusRoute, setRecipeStepStatusRoute, setUseCaseRoute, submitPantryRoute, submitRecipesRoute)
+import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue, SetRecipeStepStatusValue, SetUseCaseValue, recipeRouteDuplex, routeStr)
 import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getSerializedState, getState, getSteps, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
+import Routing.Duplex as Routing
 
 router :: String -> HTTPure.Request -> HTTPure.ResponseM
 router dist rqst = 
-  catchError (rtr rqst.method rqst.path) errHandler
+  catchError (rtr rqst.method $ Routing.parse recipeRouteDuplex $ routeStr rqst.path) errHandler
   where
-    rtr Get [] = serveHtml (i dist"/index.html")
-    rtr Get ["index.css"] = serveCss (i dist"/index.css")
-    rtr Get ["main.js"] = serveJavascript (i dist"/main.js")
+    rtr Get (Right Home) = serveHtml (i dist"/index.html")
+    rtr Get (Right CSS) = serveCss (i dist"/index.css")
+    rtr Get (Right JS) = serveJavascript (i dist"/main.js")
 
-    rtr Get route | route == recipesRoute = do
+    rtr Get (Right Recipes) = do
       contents <- encodeJson <$> allRecipes 
       HTTPure.ok $ Json.stringify contents
 
-    rtr Get route | route == ingredientsRoute = do
+    rtr Get (Right Ingredients) = do
       contents <- encodeJson <$> allIngredients
       HTTPure.ok $ Json.stringify contents
 
-    rtr Post route | route == submitRecipesRoute = go 
+    rtr Post (Right SubmitRecipes) = go 
       where 
         go
           | Right json <- Json.parseJson rqst.body
@@ -44,16 +45,16 @@ router dist rqst =
           
           | otherwise = HTTPure.badRequest "Could not parse request body"
 
-    rtr Get route | route == currentStateRoute = do
+    rtr Get (Right CurrentState) = do
       state <- getSerializedState
       HTTPure.ok $ Json.stringify $ encodeJson state
 
-    rtr Get route | route == resetStateRoute = do
+    rtr Get (Right ResetState) = do
       state <- getState
       setState $ state { useCase = Shopping, shoppingState = InputRecipes }
       HTTPure.noContent
 
-    rtr Get route | route == submitPantryRoute = do
+    rtr Get (Right SubmitPantry) = do
       state <- getState
       case state of 
         {useCase: Shopping, shoppingState: CheckKitchen items} -> do
@@ -61,7 +62,7 @@ router dist rqst =
           HTTPure.noContent
         _ -> HTTPure.conflict "No items can or will exist until recipes are input."
 
-    rtr Post route | route == setItemStatusRoute = go
+    rtr Post (Right SetItemStatus) = go
       where
         go 
           | Right json <- Json.parseJson rqst.body
@@ -84,7 +85,7 @@ router dist rqst =
           | checked = List.filter (_.ingredient.name >>> (/=) submittedItem.ingredient.name) items
           | otherwise = submittedItem : items
 
-    rtr Post route | route == addItemRoute = go 
+    rtr Post (Right AddItem) = go 
       where 
         go 
           | Right json <- Json.parseJson rqst.body 
@@ -122,12 +123,12 @@ router dist rqst =
 
             allExisting = existingItems <> existingCustom
 
-    rtr Get route | route == resetRecipeRoute = do
+    rtr Get (Right ResetRecipe) = do
       state <- getState
       setState $ state { cookingState = Nothing }
       HTTPure.noContent
 
-    rtr Post route | route == setRecipeStepStatusRoute = go
+    rtr Post (Right SetRecipeStatus) = go
       where 
         go 
           | Right json <- Json.parseJson rqst.body 
@@ -147,17 +148,17 @@ router dist rqst =
         replaceStep newStep steps = 
           steps <#> \step -> if step.ordinal == newStep.ordinal then newStep else step
 
-    rtr Get route | route == recipesWithStepsRoute = do
+    rtr Get (Right RecipesWithSteps) = do
       recipes <- getRecipesWithSteps 
       HTTPure.ok $ Json.stringify $ encodeJson recipes
 
-    rtr Post route | route == selectRecipeRoute = do
+    rtr Post (Right SelectRecipe) = do
       state <- getState
       steps <- getSteps rqst.body
       setState $ state { useCase = Cooking, cookingState = Just steps }
       HTTPure.noContent
 
-    rtr Post route | route == setUseCaseRoute = go
+    rtr Post (Right SetUseCase) = go
       where 
         go
           | Right json <- Json.parseJson rqst.body 
