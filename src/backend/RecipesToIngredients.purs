@@ -39,7 +39,7 @@ aggregateGroup ingredients =
   # NEList.sortBy (comparing _.units)
   # NEList.groupBy (equating _.units)
   <#> (unwrap >>> foldl1 (\a b -> a { quantity = a.quantity + b.quantity }))
-  <#> (\{quantity, units} -> i(show quantity)(maybe "" (" " <> _) units))
+  <#> (\{quantity, units} -> i(show quantity)(caseMaybe {nothing: "", just: (" " <> _)} units))
   # intercalate ", "
       
 

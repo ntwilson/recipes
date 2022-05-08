@@ -5,10 +5,12 @@ import Frontend.Prelude
 import Affjax.RequestBody (RequestBody(..))
 import Concur.React.Props as Props
 import Data.HTTP.Method (Method(..))
+import Option as Option
 import Recipes.API (SetRecipeStepStatusValue)
 import Recipes.API as Routing
 import Recipes.DataStructures (RecipeStep, CookingState)
 import Recipes.Frontend.Http (expectRequest)
+import Recipes.Frontend.MUI as MUI
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
@@ -45,8 +47,8 @@ recipeStepList state@{recipe, steps} = do
 
 recipeStepListItem :: RecipeStep -> Widget HTML SetRecipeStepStatusValue
 recipeStepListItem step = do
-  div [Props.className "checkbox-container"] 
-    [ input [Props._type "checkbox", void Props.onChange, Props.checked step.completed, Props.className "multiline"] 
+  div'
+    [ MUI.checkbox $ Option.fromRecord { onClick: \_ -> unit, checked: step.completed } 
     , span [void Props.onClick, Props.className "checkbox-text"] [text step.description]
     ]
 

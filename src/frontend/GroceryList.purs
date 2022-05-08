@@ -3,16 +3,18 @@ module Recipes.Frontend.GroceryList where
 import Frontend.Prelude
 
 import Affjax.RequestBody as RequestBody
-import Concur.React.Props (unsafeTargetValue)
 import Concur.React.Props as Props
 import Data.HTTP.Method (Method(..))
 import Data.List as List
 import Data.List.NonEmpty as NEList
 import Data.List.Types (List, NonEmptyList)
+import Option as Option
 import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue)
 import Recipes.API as Routing
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
+import Recipes.Frontend.MUI (TextSize(..))
+import Recipes.Frontend.MUI as MUI
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (confirm, location)
@@ -41,16 +43,17 @@ storeList itemsByStore =
       List.sortBy (comparing _.item.ingredient.section)
       >>> List.groupBy (equating _.item.ingredient.section)
 
+foreign import scrollToBottom :: Effect Unit
+
 type AddItemState = {name::String, store::String, section::String}
 data AddItemAction = EnterState AddItemState | Finish AddItemState
 addItemForm :: Widget HTML AddItemValue
 addItemForm = do
-  _ <- button 
-    [ Props.onClick 
-    , Props.style 
-      { textDecoration: "underline", marginTop: "1em", marginBottom: "1em", border: "none", backgroundColor: "white", color: "#444" }
-    ] 
-    [text "Add another item"]
+  _ <- MUI.floatingActionButton 
+    ( Option.fromRecord { onClick: \_ -> unit, classes: {root: "add-item-fab"} }) 
+    [MUI.addIcon]
+
+  liftEffect scrollToBottom
 
   { name, store, section } <- itemInfo {name: "", store: "", section: ""}
 
@@ -60,14 +63,9 @@ addItemForm = do
     itemInfo :: {name::String, store::String, section::String} -> Widget HTML {name::String, store::String, section::String}
     itemInfo state@{name, store, section} = do
       formResult <- fold 
-        [ table [ Props.style { marginTop: "1em" } ]
-          [ tr' [ td' [text "Name"], td' [text "Store"], td' [text "Section (optional)"] ]
-          , tr' 
-            [ td' [textBox [Props.value name] <#> state {name = _} <#> EnterState ]
-            , td' [textBox [Props.value store] <#> state {store = _} <#> EnterState ]
-            , td' [textBox [Props.value section] <#> state {section = _} <#> EnterState ]
-            ]
-          ]
+        [ textField { label: "Name", value: name, onChange: EnterState <<< state {name = _}, autoFocus: true }
+        , textField { label: "Store", value: store, onChange: EnterState <<< state {store = _}, autoFocus: false }
+        , textField { label: "Section (optional)", value: section, onChange: EnterState <<< state {section = _}, autoFocus: false }
         , br'
         , button [Props.onClick $> Finish state, Props.style {marginBottom: "1em"}] [text "Done"]
         ]
@@ -76,7 +74,13 @@ addItemForm = do
         EnterState newState -> itemInfo newState
         Finish newState -> pure newState
 
-    textBox props = input (props <> [Props._type "text", Props.onChange <#> unsafeTargetValue])
+    textField :: { label :: String, value :: String, onChange :: String -> AddItemAction, autoFocus :: Boolean } -> Widget HTML AddItemAction
+    textField {label, value, onChange, autoFocus} =
+      MUI.textField 
+        ( Option.fromRecord 
+          { label, value, onChange, size: TextSmall, classes: { root: "text-with-margin" }, autoFocus }
+        ) 
+        []
 
 data GroceryListStep 
   = UpdateList (List SetItemStatusValue) 

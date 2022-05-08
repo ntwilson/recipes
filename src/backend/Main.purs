@@ -12,7 +12,7 @@ main = launchAff_ do
   config <- serverOptions
   mode <- env "MODE"
   let 
-    startupSuffix = maybe "" (\m -> i " in "m" mode") mode 
+    startupSuffix = caseMaybe {nothing: "", just: \m -> i " in "m" mode"} mode 
     startupMsg = i "starting server: "config.opts.hostname":"(show config.opts.port)"/"startupSuffix
   serve config.opts (logMiddleware (router config.dist)) $ log startupMsg
 

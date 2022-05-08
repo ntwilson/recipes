@@ -1,4 +1,4 @@
-module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, (<$$>), (<##>), equating) where
+module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, (<$$>), (<##>), equating, caseMaybe) where
 
 import Prelude
 
@@ -7,7 +7,8 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap) as Exports
 import Data.Either (Either(..), choose, either, fromLeft, fromRight, hush, isLeft, isRight, note, note') as Exports
 import Data.Interpolate (i) as Exports
-import Data.Maybe (Maybe(..), fromJust, fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe', optional) as Exports
+import Data.Maybe (Maybe(..), fromJust, fromMaybe, fromMaybe', isJust, isNothing, optional) as Exports
+import Data.Maybe (maybe)
 import Data.Newtype (over, un, under, unwrap) as Exports
 import Data.Traversable (class Foldable, class Traversable, Accum, all, and, any, elem, find, fold, foldMap, foldMapDefaultL, foldMapDefaultR, foldl, foldlDefault, foldr, foldrDefault, for, for_, intercalate, mapAccumL, mapAccumR, maximum, maximumBy, minimum, minimumBy, notElem, oneOf, or, scanl, scanr, sequence, sequenceDefault, sequence_, sum, traverse, traverseDefault, traverse_) as Exports
 import Data.Tuple.Nested ((/\), type (/\)) as Exports
@@ -31,6 +32,9 @@ revDoubleMap = flip doubleMap
 
 equating :: ∀ a b. Eq b => (a -> b) -> a -> a -> Boolean
 equating projection a b = projection a == projection b
+
+caseMaybe :: ∀ a b. { just :: a -> b, nothing :: b } -> Exports.Maybe a -> b
+caseMaybe { just, nothing } = maybe nothing just
 
 infixr 4 doubleMap as <$$>
 infixl 1 revDoubleMap as <##>

@@ -3,6 +3,11 @@ html {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+hr { 
+  border: 0;
+  border-top: 1px solid darkgrey;
+}
+
 button { 
   font-size: large;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,26 +17,6 @@ button {
   color: white;
   padding: 0.5em 2em;
   cursor: pointer;
-}
-
-hr { 
-  width: 97%;
-  border: none;
-  background-color: #777;
-  height: 1px;
-  margin-top: 2em;
-}
-
-input[type="checkbox"] { 
-  margin: 0 0.8em 0 0;
-  width: 1.2em;
-  height: 1.2em;
-  cursor: pointer;
-}
-
-input[type="text"] {
-  padding: 0.3em 0.5em;
-  font-size: large;
 }
 
 .nav-bar { 
@@ -73,10 +58,25 @@ input[type="text"] {
   cursor: pointer;
 }
 
-.checkbox-container {
-  margin: 1.5em 0;
+.checkbox-text {
+  user-select: none;
 }
 
 .checkbox-text:hover {
   cursor: pointer;
+}
+
+.MuiTextField-root.text-with-margin {
+  margin: 0.5rem;
+}
+
+.MuiFab-root.add-item-fab {
+  position: fixed;
+  right: 3rem;
+  bottom: 3rem;
+  color: white;
+  background-color: royalblue;
+}
+.MuiFab-root.add-item-fab:hover {
+  background-color: royalblue;
 }

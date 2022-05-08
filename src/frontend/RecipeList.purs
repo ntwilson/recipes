@@ -5,16 +5,19 @@ import Frontend.Prelude
 import Concur.React.Props as Props
 import Data.List (List, (:))
 import Data.List as List
+import Option as Option
+import Recipes.Frontend.MUI as MUI
 
 type RecipeListItem = {name :: String, checked :: Boolean}
 nextRecipe :: ∀ f. Traversable f => f RecipeListItem -> Widget HTML RecipeListItem
 nextRecipe allRecipes = 
-  fold (allRecipes <#> \recipe -> 
-    div [Props.className "checkbox-container"]
-      [ input [Props._type "checkbox", Props.onChange $> recipe, Props.checked recipe.checked] 
-      , span [Props.onClick $> recipe, Props.className "checkbox-text"] [text recipe.name]
-      ]
-  )
+  fold 
+    (allRecipes <#> \recipe -> 
+      div'
+        [ MUI.checkbox $ Option.fromRecord { onClick: \_ -> recipe, checked: recipe.checked, inputProps: { "aria-label": "controlled" } }
+        , span [Props.onClick $> recipe, Props.className "checkbox-text"] [text recipe.name]
+        ]
+    )
 
 data RecipeSelection = AnotherRecipe String | SubmitRecipes
 recipeList :: ∀ f. Traversable f => f RecipeListItem -> List String -> Widget HTML $ List String
@@ -22,7 +25,7 @@ recipeList allRecipes selectedRecipesSoFar = do
   selection <- 
     fold
       [ h3' [text "What would you like to eat this week?"] 
-      , nextRecipe allRecipes <#> (_.name >>> AnotherRecipe)
+      , nextRecipe allRecipes <#> (AnotherRecipe <<< _.name)
       , br'
       , div' [button [Props.onClick] [text "Submit"]] $> SubmitRecipes
       ]
