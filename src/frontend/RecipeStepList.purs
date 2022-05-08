@@ -47,8 +47,8 @@ recipeStepList state@{recipe, steps} = do
 
 recipeStepListItem :: RecipeStep -> Widget HTML SetRecipeStepStatusValue
 recipeStepListItem step = do
-  div'
-    [ MUI.checkbox $ Option.fromRecord { onClick: \_ -> unit, checked: step.completed } 
+  div [ Props.className "multiline" ]
+    [ MUI.checkbox $ Option.fromRecord { onClick: \_ -> unit, checked: step.completed, classes: {root: "multiline"} }
     , span [void Props.onClick, Props.className "checkbox-text"] [text step.description]
     ]
 

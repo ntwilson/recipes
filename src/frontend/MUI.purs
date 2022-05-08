@@ -129,6 +129,7 @@ rawCheckboxImpl props = unsafeCreateLeafElement rawCheckbox $ unsafeCoerce props
 type CheckboxProps a = Option.Option
   ( icon :: ReactElement
   , checkedIcon :: ReactElement
+  , classes :: { root :: String }
   , disabled :: Boolean
   , checked :: Boolean
   , id :: String
@@ -144,6 +145,7 @@ checkbox = widgetLeaf rawCheckboxImpl checkProps
     { disabled: PrimProp <<< unsafeToForeign
     , icon: PrimProp <<< unsafeToForeign
     , checkedIcon: PrimProp <<< unsafeToForeign
+    , classes: PrimProp <<< unsafeToForeign
     , checked: PrimProp <<< unsafeToForeign
     , defaultChecked: PrimProp <<< unsafeToForeign
     , id: PrimProp <<< unsafeToForeign

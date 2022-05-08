@@ -60,6 +60,7 @@ button {
 
 .checkbox-text {
   user-select: none;
+  line-height: 1.7;
 }
 
 .checkbox-text:hover {
@@ -79,4 +80,15 @@ button {
 }
 .MuiFab-root.add-item-fab:hover {
   background-color: royalblue;
+}
+
+.MuiCheckbox-root.multiline {
+  padding-left: 0;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+div.multiline {
+  margin: 1rem;
+  text-indent: -0.7rem;
 }

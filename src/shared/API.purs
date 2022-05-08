@@ -50,7 +50,7 @@ recipeRouteDuplex =
     , "CurrentState": apiPath "current-state"
     , "ResetState": apiPath "reset-state"
     , "ResetRecipe": apiPath "reset-recipe"
-    , "SelectRecipe": apiPath "reset-recipe"
+    , "SelectRecipe": apiPath "select-recipe"
     , "SetRecipeStatus": apiPath "set-recipe-status"
     , "SetUseCase": apiPath "set-use-case"
     , "RecipeSteps": apiPath "recipe-steps"
