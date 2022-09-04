@@ -5,10 +5,10 @@ import Backend.Prelude
 import Control.Monad.Except (runExceptT)
 import Control.Promise (Promise)
 import Control.Promise as Promise
-import Database.Postgres (Client, Query(..), execute, query_)
-import Database.Postgres.SqlValue (SqlValue)
+-- import Database.Postgres (Client, Query(..), execute, query_)
+-- import Database.Postgres.SqlValue (SqlValue)
 import Foreign (renderForeignError)
-import Foreign.Generic (class Decode, Foreign, decode)
+-- import Foreign.Generic (class Decode, Foreign, decode)
 
 data ConnectReady
 foreign import newClient :: ∀ a. Record a -> Effect ConnectReady

@@ -105,6 +105,90 @@ in  upstream
 -------------------------------
 -}
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.14.5-20220224/packages.dhall sha256:67cc3d4f0e8fb72bb1413ba94ddd72a3ceb0783eb725e3b22ad7568b3b581163
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20220816/packages.dhall
+        sha256:8b4467b4b5041914f9b765779c8936d6d4c230b1f60eb64f6269c71812fd7e98
 
-in  upstream
+let overrides =
+      { option =
+        { dependencies =
+          [ "aff"
+          , "argonaut-codecs"
+          , "argonaut-core"
+          , "codec"
+          , "codec-argonaut"
+          , "datetime"
+          , "effect"
+          , "either"
+          , "enums"
+          , "foldable-traversable"
+          , "foreign"
+          , "foreign-object"
+          , "identity"
+          , "lists"
+          , "maybe"
+          , "prelude"
+          , "profunctor"
+          , "record"
+          , "simple-json"
+          , "strings"
+          , "transformers"
+          , "tuples"
+          , "unsafe-coerce"
+          ]
+        , repo = "https://github.com/ntwilson/purescript-option"
+        , version = "main"
+        }
+      , concur-react =
+        { repo = "https://github.com/purescript-concur/purescript-concur-react"
+        , version = "v0.5.0"
+        , dependencies =
+          [ "aff"
+          , "arrays"
+          , "concur-core"
+          , "console"
+          , "effect"
+          , "either"
+          , "exceptions"
+          , "maybe"
+          , "prelude"
+          , "react"
+          , "react-dom"
+          , "transformers"
+          , "tuples"
+          , "unsafe-coerce"
+          , "web-dom"
+          , "web-events"
+          , "web-html"
+          ]
+        }
+      , concur-core =
+        { dependencies =
+          [ "aff"
+          , "aff-bus"
+          , "arrays"
+          , "avar"
+          , "console"
+          , "control"
+          , "datetime"
+          , "effect"
+          , "either"
+          , "exceptions"
+          , "foldable-traversable"
+          , "free"
+          , "identity"
+          , "lazy"
+          , "maybe"
+          , "newtype"
+          , "parallel"
+          , "prelude"
+          , "profunctor-lenses"
+          , "tailrec"
+          , "transformers"
+          , "tuples"
+          ]
+        , repo = "https://github.com/purescript-concur/purescript-concur-core"
+        , version = "v0.5.0"
+        }
+      }
+
+in  upstream // overrides
