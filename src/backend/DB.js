@@ -1,22 +1,46 @@
-var pg = require('pg');
+import { CosmosClient } from "@azure/cosmos";
 
-exports.newClient = function(connInfo) {
-  return function () {
-    return new pg.Client(connInfo);
-  }
+export function cosmosClient(config) { return new CosmosClient(config); }
+
+export function database({ endpoint, key, databaseId }) {
+  return new CosmosClient({endpoint, key}).database(databaseId);
 }
 
-exports.connect = function(client) {
-  return function () {
-    return client.connect().then(function() { return client; });
-  }
+// // https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-api-nodejs-get-started?tabs=linux
+export async function queryImpl(container, query) {
+  const { resources } = await container.items.query({ query }).fetchAll();
+  return resources;
 }
 
-exports.disconnect = function(client) {
-  return function () { 
-    return client.end();
-  }
+export async function insertImpl(container, item) { 
+  const { resource } = await container.items.create(item);
+  return resource;
 }
 
-exports.unsafeStringify = function(a) { return JSON.stringify(a); }
+export async function updateImpl(container, item) { 
+  const { resource } = await container.item(item.id, item.category).replace(item);
+  return resource;
+}
+
+export async function deleteImpl(container, item) {
+  const { resource } = await container.item(item.id, item.category).delete();
+  return resource;
+}
+
+export function container(database, containerName) {
+  return database.container(containerName);
+}
+
+export async function createDatabase(client, dbName) { 
+  const { database } = await client.databases.createIfNotExists({ id: dbName });
+  return database;
+}
+
+export async function createContainer(database, containerName, partitionKey) { 
+  const { container } = await database.containers.createIfNotExists(
+    { id: containerName, partitionKey }
+  );
+
+  return container;
+}
 

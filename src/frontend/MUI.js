@@ -1,8 +1,11 @@
-exports.rawButton = require('@mui/material/Button').default;
-exports.rawTextField = require('@mui/material/TextField').default;
-exports.rawFormGroup = require('@mui/material/FormGroup').default;
-exports.rawCheckbox = require('@mui/material/Checkbox').default;
-exports.rawFab = require('@mui/material/Fab').default;
+import { Button, TextField, FormGroup, Checkbox, Fab } from "@mui/material";
+import { Add } from "@mui/icons-material";
 
-exports.rawAddIcon = require('@mui/icons-material/Add').default
+export const rawButton = Button;
+export const rawTextField = TextField;
+export const rawFormGroup = FormGroup;
+export const rawCheckbox = Checkbox;
+export const rawFab = Fab;
+
+export const rawAddIcon = Add;
 

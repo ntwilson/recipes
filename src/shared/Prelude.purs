@@ -3,6 +3,7 @@ module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap,
 import Prelude
 
 import Control.Monad.Error.Class (catchError, throwError, try) as Exports
+import Control.Monad.Trans.Class (lift) as Exports
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson) as Exports
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap) as Exports
 import Data.Either (Either(..), choose, either, fromLeft, fromRight, hush, isLeft, isRight, note, note') as Exports
