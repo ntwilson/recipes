@@ -12,19 +12,26 @@ type ConnectConfig =
   , databaseId :: String
   }
 
-type PartitionKeyDefinition = { paths :: Array String }
+newtype PartitionKeyDefinition = PartitionKeyDefinition { paths :: Array String }
+-- partition keys must have just a single path
+newPartitionKeyDef path = PartitionKeyDefinition { paths: [path] }
 
 connectionConfig :: ∀ m. MonadEffect m => ExceptT String m ConnectConfig
 connectionConfig = do
-  key <- lift (liftEffect $ lookupEnv "COSMOS_KEY") >>= case _ of
-    Nothing -> throwError "No COSMOS_KEY environment variable found"
-    Just key -> pure key
+  key <- env "COSMOS_KEY"
+  databaseId <- env "COSMOS_DB"
 
   pure $ 
     { endpoint: "https://nw-cosmos.documents.azure.com:443/"
     , key 
-    , databaseId: "recipes"
+    , databaseId
     }
+
+  where 
+  env keyname = 
+    lift (liftEffect $ lookupEnv keyname) >>= case _ of
+      Nothing -> throwError $ i"No "keyname" environment variable found"
+      Just key -> pure key
 
 newClient :: ∀ m. MonadEffect m => ExceptT String m CosmosClient
 newClient = do
@@ -51,15 +58,6 @@ query :: ∀ a. HasDbRepresentation a => Container a -> String -> Aff (Array a)
 query container query = do
   promise <- liftEffect $ queryImpl container query
   toAff promise
-
-foreign import createDatabase :: EffectFn2 CosmosClient String Database
-foreign import createContainer :: EffectFn3 Database String PartitionKeyDefinition Container
-
-setupDatabase :: ∀ m. MonadEffect m => ExceptT String m Unit
-setupDatabase = do
-  conn <- newClient
-  db <- lift $ liftEffect $ runEffectFn2 createDatabase conn ?dbName
-  lift $ liftEffect $ runEffectFn3 createContainer conn "recipe" { paths: ["name"] }
 
 -- foreign import newClient :: ∀ a. Record a -> Effect ConnectReady
 -- foreign import connect :: ConnectReady -> Effect $ Promise Client

@@ -13,6 +13,7 @@
     "build": "npm run ps && webpack && spago bundle-app -m Recipes.Backend.Main -t release/index.js",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
+    "setup-db": "spago run -m Recipes.Backend.DB.Setup --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "start-db-server": "sudo service postgresql start"
   },
   "repository": {
