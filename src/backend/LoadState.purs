@@ -4,13 +4,16 @@ import Backend.Prelude
 
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Codec.Argonaut as Codec
 import Data.List (List)
 import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.DB (QueryError(..), ingredientsContainer, newConnection, printQueryError, readAll, recipeContainer, recipeIngredientsContainer)
-import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, SerializedAppState)
-import Recipes.StateSerialization (decodeAppState, encodeAppState)
+import Recipes.Backend.DB (appStateContainer, ingredientsContainer, newConnection, printQueryError, readAll, readAllWith, recipeContainer, recipeIngredientsContainer, recipeStepsContainer)
+import Recipes.Backend.DB as DB
+import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, SerializedAppState, appStateCodec)
+import Recipes.StateSerialization (encodeAppState)
+import Unsafe.Coerce (unsafeCoerce)
 
 
 allRecipes :: ExceptT String Aff RecipesValue
@@ -32,43 +35,56 @@ allRecipeIngredients = do
   container <- recipeIngredientsContainer conn
   readAll container # withExceptT printQueryError <#> List.fromFoldable
 
--- getSerializedState :: Aff SerializedAppState
--- getSerializedState = formatFromDB <$> state 
---   where 
---     state = withConnection $ \conn -> do
---       serializedRecords <- execQuery conn $ Query $ i"SELECT * FROM "appStateTable
---       Array.head serializedRecords # note "No appState record found in the database" # liftError
+getSerializedState :: ExceptT String Aff SerializedAppState
+getSerializedState = encodeAppState <$> getState
 
---     formatFromDB :: SerializedAppStateDB -> SerializedAppState
---     formatFromDB { name, ingredients, recipesteps } = { name, ingredients, recipeSteps: recipesteps }
+getState :: ExceptT String Aff AppState
+getState = do
+  conn <- newConnection
+  ingredientCol <- ingredientsContainer conn
+  appStateCol <- appStateContainer conn
 
--- getState :: Aff AppState
--- getState = withConnection $ \conn -> do
---   ingredients <- execQuery conn $ Query $ i"SELECT * FROM "ingredientTable
---   serializedRecords <- execQuery conn $ Query $ i"SELECT * FROM "appStateTable
---   serialized <- Array.head serializedRecords # note "No appState record found in the database" # liftError
---   decodeAppState (List.fromFoldable ingredients) serialized
+  ingredients <- readAll ingredientCol # withExceptT printQueryError
+  appStateRecords <- readAllWith (appStateCodec $ List.fromFoldable ingredients) appStateCol # withExceptT printQueryError
 
--- setState :: AppState -> Aff Unit
--- setState state = withConnection $ \conn -> do
---   let stateRecord = encodeAppState state
---   execUpdate conn (Query $ i"UPDATE "appStateTable" SET name = $1, ingredients = $2, recipeSteps = $3")
---     [ toSql stateRecord.name, toSql stateRecord.ingredients, toSql stateRecord.recipeSteps ]
+  Array.head appStateRecords # note "No appState record found in the database" # except
 
--- getSteps :: String -> Aff CookingState
--- getSteps recipeName = withConnection $ \conn -> do
---   steps :: Array RecipeStepsDB <- execQuery conn $ Query $ i"SELECT * FROM "recipeStepsTable" WHERE recipeName = '"recipeName"' ORDER BY stepNumber ASC" 
+setState :: AppState -> ExceptT String Aff Unit
+setState state = do
+  conn <- newConnection
+  appStateCol <- appStateContainer conn
 
---   guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # liftError
+  appStateRecords <- readAllWith (unsafeCoerce Codec.json) appStateCol # withExceptT printQueryError
 
---   let 
---     cookingStateSteps = steps <#> \step ->
---       { completed: false, ordinal: step.stepnumber, description: step.stepdescription }
+  oldState <- Array.head appStateRecords # note "No appState record found in the database" # except
+  DB.deleteWith (unsafeCoerce Codec.json) appStateCol oldState
+  DB.insert appStateCol state
 
---   pure { recipe: recipeName, steps: List.fromFoldable cookingStateSteps }
 
--- getRecipesWithSteps :: Aff $ Array String 
--- getRecipesWithSteps = withConnection $ \conn -> do
---   recipes :: Array {recipename::Maybe String} <- execQuery conn $ Query $ i"SELECT recipeName FROM "recipeStepsTable
 
---   pure $ Array.catMaybes $ Array.fromFoldable (Set.fromFoldable (recipes <#> _.recipename))
+getSteps :: String -> ExceptT String Aff CookingState
+getSteps recipeName = do
+  conn <- newConnection
+  stepsCol <- recipeStepsContainer conn
+
+  steps <- DB.query stepsCol 
+    "SELECT * FROM recipeSteps WHERE recipeName = @recipeName ORDER BY stepNumber ASC" 
+    [{ name: "@recipeName", value: encodeJson recipeName }]
+    # withExceptT printQueryError
+
+  guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # except
+
+  let 
+    cookingStateSteps = steps <#> \step ->
+      { completed: false, ordinal: step.stepNumber, description: step.stepDescription }
+
+  pure { recipe: recipeName, steps: List.fromFoldable cookingStateSteps }
+
+getRecipesWithSteps :: ExceptT String Aff $ Array String 
+getRecipesWithSteps = do
+  conn <- newConnection
+  stepsCol <- recipeStepsContainer conn
+
+  recipes <- DB.readAll stepsCol # withExceptT printQueryError
+
+  pure $ Array.fromFoldable (Set.fromFoldable (recipes <#> _.recipeName))

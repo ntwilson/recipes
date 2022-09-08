@@ -7,6 +7,8 @@ module Recipes.Backend.DB
   , QueryError(..)
   , appStateContainer
   , connectionConfig
+  , delete
+  , deleteWith
   , ingredientsContainer
   , insert
   , newClient
@@ -97,14 +99,14 @@ recipeStepsContainer = getContainer "recipeSteps"
 appStateContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container AppState)
 appStateContainer = getContainer "appState"
 
-type QueryParameter a = { name :: String, value :: a }
 data QueryError = DBError Error | JsonError JsonDecodeError
 printQueryError :: QueryError -> String
 printQueryError (DBError err) = message err
 printQueryError (JsonError err) = printJsonDecodeError err
 
-foreign import queryImpl :: ∀ a. EffectFn3 (Container a) String (Array Json) (Promise (Array Json))
-query :: ∀ a m. MonadAff m => DecodeJson a => Container a -> String -> Array Json -> ExceptT QueryError m (Array a)
+type QueryParameter = { name :: String, value :: Json }
+foreign import queryImpl :: ∀ a. EffectFn3 (Container a) String (Array QueryParameter) (Promise (Array Json))
+query :: ∀ a m. MonadAff m => DecodeJson a => Container a -> String -> Array QueryParameter -> ExceptT QueryError m (Array a)
 query container query parameters = parseQueryResults decodeClassy $ runEffectFn3 queryImpl container query parameters
 
 foreign import readAllImpl :: ∀ a. EffectFn1 (Container a) (Promise (Array Json))
@@ -142,3 +144,13 @@ insert container item = do
   promise <- runEffectFn2 insertImpl container (encodeJson item) # try # liftEffect # ExceptT # withExceptT message
   toAff promise # try # liftAff # ExceptT # withExceptT message
 
+foreign import deleteImpl :: ∀ a. EffectFn2 (Container a) Json (Promise Unit) 
+delete :: ∀ a m. MonadAff m => EncodeJson a => Container a -> a -> ExceptT String m Unit
+delete container item = do
+  promise <- runEffectFn2 deleteImpl container (encodeJson item) # try # liftEffect # ExceptT # withExceptT message
+  toAff promise # try # liftAff # ExceptT # withExceptT message
+
+deleteWith :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> a -> ExceptT String m Unit
+deleteWith codec container item = do
+  promise <- runEffectFn2 deleteImpl container (Codec.encode codec item) # try # liftEffect # ExceptT # withExceptT message
+  toAff promise # try # liftAff # ExceptT # withExceptT message

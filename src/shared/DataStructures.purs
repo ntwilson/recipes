@@ -51,7 +51,6 @@ type RecipeSteps = { recipeName :: String, stepNumber :: Int, stepDescription ::
 
 type SerializedAppState = { name :: String, ingredients :: Maybe String, recipeSteps :: Maybe String }
 
-
 type RecipeStep = { completed :: Boolean, ordinal :: Int, description :: String }
 type CookingState = { recipe :: String, steps :: List RecipeStep }
 
