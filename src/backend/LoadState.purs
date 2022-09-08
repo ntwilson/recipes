@@ -7,18 +7,18 @@ import Data.Array as Array
 import Data.List (List)
 import Data.List as List
 import Data.Set as Set
--- import Database.Postgres (Query(..))
--- import Database.Postgres.SqlValue (toSql)
 import Recipes.API (RecipesValue)
--- import Recipes.Backend.DB (appStateTable, execQuery, execUpdate, ingredientTable, recipeIngredientsTable, recipeStepsTable, recipeTable, withConnection)
+import Recipes.Backend.DB (QueryError(..), newConnection, printQueryError, readAll, recipeContainer)
 import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeStepsDB, SerializedAppState, SerializedAppStateDB)
 import Recipes.StateSerialization (decodeAppState, encodeAppState)
 
 
--- allRecipes :: Aff RecipesValue
--- allRecipes = withConnection $ \conn -> do
---   recipeNames :: Array {name::String} <- execQuery conn $ Query $ i"SELECT name FROM "recipeTable
---   pure (recipeNames <#> _.name)
+allRecipes :: ExceptT String Aff RecipesValue
+allRecipes = do 
+  conn <- newConnection
+  container <- recipeContainer conn
+  recipeNames <- readAll container # withExceptT printQueryError
+  pure (recipeNames <#> _.name)
 
 -- allIngredients :: Aff $ List Ingredient
 -- allIngredients = withConnection $ \conn ->

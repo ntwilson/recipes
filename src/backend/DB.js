@@ -6,10 +6,19 @@ export function database({ endpoint, key, databaseId }) {
   return new CosmosClient({endpoint, key}).database(databaseId);
 }
 
+export function getContainerImpl(database, containerId) {
+  return database.container(containerId);
+}
+
 // // https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-api-nodejs-get-started?tabs=linux
-export async function queryImpl(container, query) {
-  const { resources } = await container.items.query({ query }).fetchAll();
-  return resources;
+export async function queryImpl(container, query, parameters) {
+  const { result } = await container.items.query({ query, parameters }).fetchAll();
+  return result;
+}
+
+export async function readAllImpl(container) {
+  const {body} = await container.items.readAll().fetchAll(); 
+  return body;
 }
 
 export async function insertImpl(container, item) { 

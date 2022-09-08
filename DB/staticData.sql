@@ -265,14 +265,6 @@ INSERT INTO recipeIngredients (recipe, ingredient, quantity, units) VALUES ('The
 COMMIT;
 
 
-DELETE FROM settings;
-BEGIN;
-INSERT INTO settings (name, value) VALUES (
-  'schemaVersion',
-  '1.0'
-);
-COMMIT;
-
 DELETE FROM recipeSteps;
 BEGIN;
 INSERT INTO recipeSteps (recipeName, stepNumber, stepDescription) VALUES ('Simple Chili', 1, 'Brown the beef in a pot');

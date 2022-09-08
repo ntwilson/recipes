@@ -2,9 +2,12 @@ module Recipes.Backend.DB where
 
 import Backend.Prelude
 
-import Control.Monad.Except (ExceptT)
 import Control.Promise (Promise, toAff)
-import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn3, runEffectFn1, runEffectFn2, runEffectFn3)
+import Data.Argonaut (class DecodeJson, Json, JsonDecodeError, printJsonDecodeError)
+import Effect.Exception (message)
+import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, runEffectFn2)
+import Option as Option
+import Recipes.DataStructures (Ingredient)
 
 type ConnectConfig = 
   { endpoint :: String
@@ -14,6 +17,8 @@ type ConnectConfig =
 
 newtype PartitionKeyDefinition = PartitionKeyDefinition { paths :: Array String }
 -- partition keys must have just a single path
+-- https://docs.microsoft.com/en-us/javascript/api/@azure/cosmos/partitionkeydefinition?view=azure-node-latest
+newPartitionKeyDef :: String -> PartitionKeyDefinition
 newPartitionKeyDef path = PartitionKeyDefinition { paths: [path] }
 
 connectionConfig :: ∀ m. MonadEffect m => ExceptT String m ConnectConfig
@@ -36,36 +41,62 @@ connectionConfig = do
 newClient :: ∀ m. MonadEffect m => ExceptT String m CosmosClient
 newClient = do
   config <- connectionConfig
-  lift $ liftEffect $ runEffectFn1 cosmosClient config
+  runEffectFn1 cosmosClient config # try # liftEffect # ExceptT # withExceptT message
 
 newConnection :: ∀ m. MonadEffect m => ExceptT String m Database
 newConnection = do
   config <- connectionConfig
-  lift $ liftEffect $ runEffectFn1 database config
+  runEffectFn1 database config # try # liftEffect # ExceptT # withExceptT message
 
 foreign import data Database :: Type
 foreign import data Container :: Type -> Type
 foreign import data CosmosClient :: Type
 foreign import cosmosClient :: ∀ r. EffectFn1 { endpoint :: String, key :: String | r } CosmosClient
 foreign import database :: EffectFn1 ConnectConfig Database
+foreign import getContainerImpl :: ∀ a. EffectFn2 Database String (Container a)
 
-class HasDbRepresentation :: Type -> Constraint
-class HasDbRepresentation a
+getContainer :: ∀ a m. MonadEffect m => String -> Database -> ExceptT String m (Container a)
+getContainer containerName database = 
+  runEffectFn2 getContainerImpl database containerName # try # liftEffect # ExceptT # withExceptT message
 
-foreign import queryImpl :: ∀ a. Container a -> String -> Effect (Promise (Array a))
+recipeContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container {name::String})
+recipeContainer = getContainer "recipes"
 
-query :: ∀ a. HasDbRepresentation a => Container a -> String -> Aff (Array a)
-query container query = do
-  promise <- liftEffect $ queryImpl container query
-  toAff promise
+ingredientsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container Ingredient)
+ingredientsContainer = getContainer "ingredients"
 
--- foreign import newClient :: ∀ a. Record a -> Effect ConnectReady
--- foreign import connect :: ConnectReady -> Effect $ Promise Client
--- foreign import disconnect :: Client -> Effect $ Promise Unit
--- foreign import unsafeStringify :: ∀ a. a -> String
+type QueryParameter a = { name :: String, value :: a }
+data QueryError = DBError Error | JsonError JsonDecodeError
+printQueryError :: QueryError -> String
+printQueryError (DBError err) = message err
+printQueryError (JsonError err) = printJsonDecodeError err
 
--- type Connection = Client
+foreign import queryImpl :: ∀ a. Container a -> String -> Array Json -> Effect (Promise (Array Json))
+query :: ∀ a m. MonadAff m => DecodeJson a => Container a -> String -> Array Json -> ExceptT QueryError m (Array a)
+query container query parameters = parseQueryResults $ queryImpl container query parameters
 
+foreign import readAllImpl :: ∀ a. Container a -> Effect (Promise (Array Json))
+readAll :: ∀ a m. MonadAff m => DecodeJson a => Container a -> ExceptT QueryError m (Array a)
+readAll container = parseQueryResults $ readAllImpl container
+
+parseQueryResults :: ∀ m a. MonadAff m => DecodeJson a => Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
+parseQueryResults rawResult = do
+  promise <- try rawResult # liftEffect # ExceptT # withExceptT DBError
+  results <- toAff promise # try # liftAff # ExceptT # withExceptT DBError
+
+  traverse decodeJson results # except # withExceptT JsonError
+
+foreign import insertImpl :: ∀ a. EffectFn2 (Container a) Json (Promise Unit)
+insert :: ∀ a m. MonadAff m => EncodeJson a => Container a -> a -> ExceptT String m Unit
+insert container item = do
+  promise <- runEffectFn2 insertImpl container (encodeJson item) # try # liftEffect # ExceptT # withExceptT message
+  toAff promise # try # liftAff # ExceptT # withExceptT message
+
+
+-- export async function insertImpl(container, item) { 
+--   const { resource } = await container.items.create(item);
+--   return resource;
+-- }
 -- client :: ∀ aff. MonadAff aff => aff ConnectReady
 -- client = do
 --   mode <- env "MODE"
@@ -83,27 +114,11 @@ query container query = do
 --     env = liftEffect <<< lookupEnv
 
 
--- connection :: ∀ aff. MonadAff aff => aff Connection 
--- connection = do
---   cl <- client
---   liftAff $ (join $ liftEffect $ Promise.toAff <$> connect cl)
-
--- withConnection :: ∀ aff a. MonadAff aff => (Connection -> aff a) -> aff a
--- withConnection action = do
---   conn <- connection
---   ans <- action conn
---   liftAff $ (join $ liftEffect $ Promise.toAff <$> disconnect conn)
---   pure ans
 
 -- decodeWithError :: ∀ a. Decode a => Foreign -> Either Error a
 -- decodeWithError f = lmap (error <<< renderManyErrors) $ unwrap $ runExceptT $ decode f
 --   where 
 --   renderManyErrors = intercalate ";\n" <<< map renderForeignError
-
--- execQuery :: ∀ a. Decode a => Client -> Query a -> Aff $ Array a
--- execQuery conn qry@(Query qryStr) = do
---   log $ i"Executing> "qryStr
---   query_ decodeWithError qry conn
 
 -- execUpdate :: ∀ s. Client -> Query s -> Array SqlValue -> Aff Unit
 -- execUpdate conn query@(Query qryStr) vals = do
@@ -119,9 +134,6 @@ query container query = do
 
 -- recipeIngredientsTable :: String
 -- recipeIngredientsTable = "recipeIngredients"
-
--- settingsTable :: String
--- settingsTable = "settings"
 
 -- appStateTable :: String
 -- appStateTable = "appState"

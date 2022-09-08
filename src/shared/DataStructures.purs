@@ -10,7 +10,6 @@ import Data.List as List
 import Data.Show.Generic (genericShow)
 
 type Recipe = { name :: String, fullDescription :: String }
-type RecipeDB = { name :: String, fulldescription :: String } 
 
 type Ingredient = { name :: String, store :: String, section :: Maybe String, common :: Boolean }
 decodeKnownIngredient :: List Ingredient -> Json -> Either JsonDecodeError Ingredient
@@ -25,7 +24,6 @@ decodeCustomIngredient = decodeJson
 
 type RecipeIngredients = { recipe :: String, ingredient :: String, quantity :: Number, units :: Maybe String }
 
-type Settings = { name :: String, value :: String }
 
 type RecipeSteps = { recipeName :: String, stepNumber :: Int, stepDescription :: String }
 type RecipeStepsDB = { recipename :: String, stepnumber :: Int, stepdescription :: String }

@@ -11,3 +11,7 @@ export async function createContainer(database, containerName, partitionKey) {
 
   return container;
 }
+
+export const deleteContainer = (database) => (containerName) => async () => {
+  await database.container(containerName).delete();
+}

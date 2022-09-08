@@ -19,12 +19,6 @@ CREATE TABLE recipeIngredients (
   PRIMARY KEY(recipe, ingredient)
 );
 
-CREATE TABLE settings (
-  name text NOT NULL,
-  value text NOT NULL,
-  PRIMARY KEY(name)
-);
-
 CREATE TABLE appState (
   name text NOT NULL, 
   ingredients text,
