@@ -9,8 +9,6 @@ import Data.List (List)
 import Data.List as List
 import Data.Show.Generic (genericShow)
 
-type Recipe = { name :: String, fullDescription :: String }
-
 type Ingredient = { name :: String, store :: String, section :: Maybe String, common :: Boolean }
 decodeKnownIngredient :: List Ingredient -> Json -> Either JsonDecodeError Ingredient
 decodeKnownIngredient allIngredients json = do
@@ -28,7 +26,6 @@ type RecipeIngredients = { recipe :: String, ingredient :: String, quantity :: N
 type RecipeSteps = { recipeName :: String, stepNumber :: Int, stepDescription :: String }
 
 type SerializedAppState = { name :: String, ingredients :: Maybe String, recipeSteps :: Maybe String }
-type SerializedAppStateDB = { name :: String, ingredients :: Maybe String, recipesteps :: Maybe String }
 
 
 type RecipeStep = { completed :: Boolean, ordinal :: Int, description :: String }

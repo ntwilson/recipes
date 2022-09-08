@@ -1,4 +1,24 @@
-module Recipes.Backend.DB where
+module Recipes.Backend.DB
+  ( ConnectConfig
+  , Container
+  , CosmosClient
+  , Database
+  , PartitionKeyDefinition
+  , QueryError(..)
+  , connectionConfig
+  , ingredientsContainer
+  , insert
+  , newClient
+  , newConnection
+  , newPartitionKeyDef
+  , printQueryError
+  , query
+  , readAll
+  , recipeContainer
+  , recipeIngredientsContainer
+  , recipeStepsContainer
+  )
+  where
 
 import Backend.Prelude
 
@@ -6,7 +26,6 @@ import Control.Promise (Promise, toAff)
 import Data.Argonaut (class DecodeJson, Json, JsonDecodeError, printJsonDecodeError)
 import Effect.Exception (message)
 import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, runEffectFn2)
-import Option as Option
 import Recipes.DataStructures (Ingredient, RecipeIngredients, RecipeSteps)
 
 type ConnectConfig = 
@@ -98,51 +117,3 @@ insert container item = do
   promise <- runEffectFn2 insertImpl container (encodeJson item) # try # liftEffect # ExceptT # withExceptT message
   toAff promise # try # liftAff # ExceptT # withExceptT message
 
-
--- export async function insertImpl(container, item) { 
---   const { resource } = await container.items.create(item);
---   return resource;
--- }
--- client :: ∀ aff. MonadAff aff => aff ConnectReady
--- client = do
---   mode <- env "MODE"
---   if mode /= Just "development"
---   then do
---     connectionString <- fromMaybe "" <$> env "DATABASE_URL"
---     liftEffect $ newClient { connectionString, ssl: { rejectUnauthorized: false } }
---   else do
---     database <- fromMaybe "recipes" <$> env "DATABASE_NAME"
---     user <- fromMaybe "" <$> env "DATABASE_USER"
---     password <- fromMaybe "" <$> env "DATABASE_PASSWORD"
---     liftEffect $ newClient { user, database, password }
-  
---   where
---     env = liftEffect <<< lookupEnv
-
-
-
--- decodeWithError :: ∀ a. Decode a => Foreign -> Either Error a
--- decodeWithError f = lmap (error <<< renderManyErrors) $ unwrap $ runExceptT $ decode f
---   where 
---   renderManyErrors = intercalate ";\n" <<< map renderForeignError
-
--- execUpdate :: ∀ s. Client -> Query s -> Array SqlValue -> Aff Unit
--- execUpdate conn query@(Query qryStr) vals = do
---   log $ i"Executing> "qryStr
---   log $ i"  with values> "(show (unsafeStringify <$> vals))
---   execute query vals conn
-
--- recipeTable :: String
--- recipeTable = "recipe"
-
--- ingredientTable :: String
--- ingredientTable = "ingredient"
-
--- recipeIngredientsTable :: String
--- recipeIngredientsTable = "recipeIngredients"
-
--- appStateTable :: String
--- appStateTable = "appState"
-
--- recipeStepsTable :: String
--- recipeStepsTable = "recipeSteps"

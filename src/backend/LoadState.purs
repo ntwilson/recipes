@@ -8,8 +8,8 @@ import Data.List (List)
 import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.DB (QueryError(..), newConnection, printQueryError, readAll, recipeContainer)
-import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, SerializedAppState, SerializedAppStateDB)
+import Recipes.Backend.DB (QueryError(..), ingredientsContainer, newConnection, printQueryError, readAll, recipeContainer, recipeIngredientsContainer)
+import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, SerializedAppState)
 import Recipes.StateSerialization (decodeAppState, encodeAppState)
 
 
@@ -20,13 +20,17 @@ allRecipes = do
   recipeNames <- readAll container # withExceptT printQueryError
   pure (recipeNames <#> _.name)
 
--- allIngredients :: Aff $ List Ingredient
--- allIngredients = withConnection $ \conn ->
---   List.fromFoldable <$> (execQuery conn $ Query $ i"SELECT * FROM "ingredientTable)
+allIngredients :: ExceptT String Aff $ List Ingredient
+allIngredients = do
+  conn <- newConnection
+  container <- ingredientsContainer conn
+  readAll container # withExceptT printQueryError <#> List.fromFoldable
 
--- allRecipeIngredients :: Aff $ List RecipeIngredients 
--- allRecipeIngredients = withConnection $ \conn ->
---   List.fromFoldable <$> (execQuery conn $ Query $ i"SELECT * FROM "recipeIngredientsTable)
+allRecipeIngredients :: ExceptT String Aff $ List RecipeIngredients 
+allRecipeIngredients = do
+  conn <- newConnection
+  container <- recipeIngredientsContainer conn
+  readAll container # withExceptT printQueryError <#> List.fromFoldable
 
 -- getSerializedState :: Aff SerializedAppState
 -- getSerializedState = formatFromDB <$> state 
