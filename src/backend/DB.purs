@@ -7,7 +7,7 @@ import Data.Argonaut (class DecodeJson, Json, JsonDecodeError, printJsonDecodeEr
 import Effect.Exception (message)
 import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, runEffectFn2)
 import Option as Option
-import Recipes.DataStructures (Ingredient)
+import Recipes.DataStructures (Ingredient, RecipeIngredients)
 
 type ConnectConfig = 
   { endpoint :: String
@@ -64,6 +64,9 @@ recipeContainer = getContainer "recipes"
 
 ingredientsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container Ingredient)
 ingredientsContainer = getContainer "ingredients"
+
+recipeIngredientsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container RecipeIngredients)
+recipeIngredientsContainer = getContainer "recipeIngredients"
 
 type QueryParameter a = { name :: String, value :: a }
 data QueryError = DBError Error | JsonError JsonDecodeError
