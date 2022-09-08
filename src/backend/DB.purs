@@ -5,6 +5,7 @@ module Recipes.Backend.DB
   , Database
   , PartitionKeyDefinition
   , QueryError(..)
+  , appStateContainer
   , connectionConfig
   , ingredientsContainer
   , insert
@@ -14,6 +15,7 @@ module Recipes.Backend.DB
   , printQueryError
   , query
   , readAll
+  , readAllWith
   , recipeContainer
   , recipeIngredientsContainer
   , recipeStepsContainer
@@ -23,10 +25,12 @@ module Recipes.Backend.DB
 import Backend.Prelude
 
 import Control.Promise (Promise, toAff)
-import Data.Argonaut (class DecodeJson, Json, JsonDecodeError, printJsonDecodeError)
+import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), printJsonDecodeError)
+import Data.Codec.Argonaut (JsonCodec)
+import Data.Codec.Argonaut as Codec
 import Effect.Exception (message)
-import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, runEffectFn2)
-import Recipes.DataStructures (Ingredient, RecipeIngredients, RecipeSteps)
+import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn3, runEffectFn1, runEffectFn2, runEffectFn3)
+import Recipes.DataStructures (Ingredient, RecipeIngredients, RecipeSteps, AppState)
 
 type ConnectConfig = 
   { endpoint :: String
@@ -90,26 +94,47 @@ recipeIngredientsContainer = getContainer "recipeIngredients"
 recipeStepsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container RecipeSteps)
 recipeStepsContainer = getContainer "recipeSteps"
 
+appStateContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container AppState)
+appStateContainer = getContainer "appState"
+
 type QueryParameter a = { name :: String, value :: a }
 data QueryError = DBError Error | JsonError JsonDecodeError
 printQueryError :: QueryError -> String
 printQueryError (DBError err) = message err
 printQueryError (JsonError err) = printJsonDecodeError err
 
-foreign import queryImpl :: ∀ a. Container a -> String -> Array Json -> Effect (Promise (Array Json))
+foreign import queryImpl :: ∀ a. EffectFn3 (Container a) String (Array Json) (Promise (Array Json))
 query :: ∀ a m. MonadAff m => DecodeJson a => Container a -> String -> Array Json -> ExceptT QueryError m (Array a)
-query container query parameters = parseQueryResults $ queryImpl container query parameters
+query container query parameters = parseQueryResults decodeClassy $ runEffectFn3 queryImpl container query parameters
 
-foreign import readAllImpl :: ∀ a. Container a -> Effect (Promise (Array Json))
+foreign import readAllImpl :: ∀ a. EffectFn1 (Container a) (Promise (Array Json))
 readAll :: ∀ a m. MonadAff m => DecodeJson a => Container a -> ExceptT QueryError m (Array a)
-readAll container = parseQueryResults $ readAllImpl container
+readAll container = parseQueryResults decodeClassy $ runEffectFn1 readAllImpl container
 
-parseQueryResults :: ∀ m a. MonadAff m => DecodeJson a => Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
-parseQueryResults rawResult = do
+readAllWith :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> ExceptT QueryError m (Array a)
+readAllWith codec container = parseQueryResults (decodeCodec codec) $ runEffectFn1 readAllImpl container
+
+decodeClassy :: ∀ a. DecodeJson a => Json -> Either QueryError a
+decodeClassy = decodeJson >>> lmap JsonError
+
+decodeCodec :: ∀ a. JsonCodec a -> Json -> Either QueryError a
+decodeCodec codec = Codec.decode codec >>> lmap (JsonError <<< codecErrToClassyErr)
+
+codecErrToClassyErr :: Codec.JsonDecodeError -> JsonDecodeError
+codecErrToClassyErr = case _ of
+  Codec.TypeMismatch str -> TypeMismatch str
+  Codec.UnexpectedValue json -> UnexpectedValue json
+  Codec.AtIndex i err -> AtIndex i $ codecErrToClassyErr err
+  Codec.AtKey k err -> AtKey k $ codecErrToClassyErr err
+  Codec.Named name err -> Named name $ codecErrToClassyErr err
+  Codec.MissingValue -> MissingValue
+
+parseQueryResults :: ∀ m a. MonadAff m => (Json -> Either QueryError a) -> Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
+parseQueryResults decode rawResult = do
   promise <- try rawResult # liftEffect # ExceptT # withExceptT DBError
   results <- toAff promise # try # liftAff # ExceptT # withExceptT DBError
 
-  traverse decodeJson results # except # withExceptT JsonError
+  traverse decode results # except
 
 foreign import insertImpl :: ∀ a. EffectFn2 (Container a) Json (Promise Unit)
 insert :: ∀ a m. MonadAff m => EncodeJson a => Container a -> a -> ExceptT String m Unit

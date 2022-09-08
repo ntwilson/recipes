@@ -17,8 +17,8 @@ export async function queryImpl(container, query, parameters) {
 }
 
 export async function readAllImpl(container) {
-  const {body} = await container.items.readAll().fetchAll(); 
-  return body;
+  const {resources} = await container.items.readAll().fetchAll(); 
+  return resources;
 }
 
 export async function insertImpl(container, item) { 
