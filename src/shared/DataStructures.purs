@@ -26,7 +26,6 @@ type RecipeIngredients = { recipe :: String, ingredient :: String, quantity :: N
 
 
 type RecipeSteps = { recipeName :: String, stepNumber :: Int, stepDescription :: String }
-type RecipeStepsDB = { recipename :: String, stepnumber :: Int, stepdescription :: String }
 
 type SerializedAppState = { name :: String, ingredients :: Maybe String, recipeSteps :: Maybe String }
 type SerializedAppStateDB = { name :: String, ingredients :: Maybe String, recipesteps :: Maybe String }

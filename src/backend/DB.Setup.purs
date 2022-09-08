@@ -6,7 +6,7 @@ import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
 import Control.Promise (Promise, toAff)
 import Effect.Exception (message)
 import Effect.Uncurried (EffectFn2, EffectFn3, runEffectFn2, runEffectFn3)
-import Recipes.Backend.DB (Container, CosmosClient, Database, PartitionKeyDefinition, connectionConfig, ingredientsContainer, newClient, newConnection, newPartitionKeyDef, recipeContainer, recipeIngredientsContainer)
+import Recipes.Backend.DB (Container, CosmosClient, Database, PartitionKeyDefinition, connectionConfig, ingredientsContainer, newClient, newConnection, newPartitionKeyDef, recipeContainer, recipeIngredientsContainer, recipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
 
@@ -34,17 +34,21 @@ setupSchema = do
   log $ i"Created database "config.databaseId
 
   db <- newConnection
-  deleteContainer db "recipes" # handleFFI # runExceptT # void # lift
+  deleteContainer db "recipes" # handleFFI # try # void
   void $ handleFFI $ runEffectFn3 createContainer db "recipes" $ newPartitionKeyDef "/name"
 
   log "Created recipes container"
-  deleteContainer db "ingredients" # handleFFI # runExceptT # void # lift
+  deleteContainer db "ingredients" # handleFFI # try # void
   void $ handleFFI $ runEffectFn3 createContainer db "ingredients" $ newPartitionKeyDef "/name"
   log "Created ingredients container"
 
-  deleteContainer db "recipeIngredients" # handleFFI # runExceptT # void # lift
+  deleteContainer db "recipeIngredients" # handleFFI # try # void
   void $ handleFFI $ runEffectFn3 createContainer db "recipeIngredients" $ newPartitionKeyDef "/recipe"
   log "Created recipeIngredients container"
+
+  deleteContainer db "recipeSteps" # handleFFI # try # void
+  void $ handleFFI $ runEffectFn3 createContainer db "recipeSteps" $ newPartitionKeyDef "/recipeName"
+  log "Created recipeSteps container"
 
   where
   handleFFI :: ∀ a. Effect (Promise a) -> ExceptT String m a
@@ -58,6 +62,7 @@ populateData = do
   populateRecipes conn
   populateIngredients conn
   populateRecipeIngredients conn
+  populateRecipeSteps conn
 
   where
   populateRecipes conn = do
@@ -321,3 +326,41 @@ populateData = do
     DB.insert container {recipe: "The Staples", ingredient: "Eggs", quantity: 1.0, units: Just "carton"}
     DB.insert container {recipe: "The Staples", ingredient: "Cream cheese", quantity: 2.0, units: Just "bricks"}
     log "Populated recipeIngredients"
+
+  populateRecipeSteps conn = do
+    container <- recipeStepsContainer conn
+
+    DB.insert container {recipeName: "Simple Chili", stepNumber: 1, stepDescription: "Brown the beef in a pot"}
+    DB.insert container {recipeName: "Simple Chili", stepNumber: 2, stepDescription: "Empty the rest of the ingredients into the pot"}
+
+
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 1,  stepDescription: "Gather: 16 oz italian sausage, 5 strips bacon, 2 cups chicken broth, 1 medium onion, 4 red potatoes, 5 cloves garlic, Italian seasoning, 1 cup heavy cream, 1 bunch kale, salt & pepper"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 2,  stepDescription: "Cut 5 strips bacon into small pieces and add them to your Instant Pot"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 3,  stepDescription: "If sausage is encased (1 pack), take the sausages out of their casings. Slice lengthwise to make a slit in their casings to get them out"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 4,  stepDescription: "Add (16 oz) sausage to your Instant Pot"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 5,  stepDescription: "Press the \"saute\" button and cook the sausages and bacon until they're crispy and browned"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 6,  stepDescription: "While the sausages and bacon cook, chop 1 onion and 4 potatoes, making sure to stir the bacon and sausages occasionally"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 7,  stepDescription: "When the sausages and bacon are nicely browned and crispy, add in 2 cups chicken stock and 4 cups water"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 8,  stepDescription: "Add the onion, potatoes, 5 cloves garlic, and a dash of Italian seasoning"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 9,  stepDescription: "Stir the soup and close the Instant Pot's lid. Make sure the valve is set to \"sealing\""}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 10, stepDescription: "Cook for 8 minutes on high pressure. The Instant Pot will take about 10 minutes or so to come up to pressure"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 11, stepDescription: "Carefully do a quick pressure release and take off the lid"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 12, stepDescription: "Add 1 cup heavy cream and 1 bunch kale. Close the lid again and let the soup sit for another 5 minutes or so until the kale wilts"}
+    DB.insert container {recipeName: "Zuppa Toscana", stepNumber: 13, stepDescription: "Season with salt & pepper"}
+
+    DB.insert container {recipeName: "Butter Chicken", stepNumber: 1, stepDescription: "Set your instant pot to saute and add 4 tbsp. butter, 2 cups onion and 5 cloves garlic. Saute for approximately 5 minutes until the onions are tender"}
+    DB.insert container {recipeName: "Butter Chicken", stepNumber: 2, stepDescription: "Cut 2 lbs chicken into bite-size pieces"}
+    DB.insert container {recipeName: "Butter Chicken", stepNumber: 3, stepDescription: "Add the chicken, 15 oz tomato sauce, 3 tbsp tomato paste, 2 tbsp red curry paste, 2 tsp garam masala, 1.5 tsp ginger, 1 tsp salt, and 0.5 tsp paprika. Lock the lid and turn the pressure valve to seal it. Set to high pressure for 7 minutes"}
+    DB.insert container {recipeName: "Butter Chicken", stepNumber: 4, stepDescription: "When the timer goes off do a natural release for 5 minutes and then turn the valve on top to venting to let the remaining steam out of the pressure cooker"}
+    DB.insert container {recipeName: "Butter Chicken", stepNumber: 5, stepDescription: "Add 0.5 cup heavy cream and stir"}
+    DB.insert container {recipeName: "Butter Chicken", stepNumber: 6, stepDescription: "Optionally add cilantro as garnish"}
+
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 1, stepDescription: "Gather: olive oil, 2-3 garlic cloves, 1-2 cup onion, 1.5 boxes chicken broth, 2 chicken breasts, can navy beans, can Great Northern beans, can diced tomatoes, bag frozen corn, 1 cup shredded Colby/Monterrey Jack, 1.5 bricks creat cheese, chicken bouillon, chicken seasoning, chili powder, cumin, cayenne pepper."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 2, stepDescription: "Place the Instant Pot on saute setting. Add 2-3 cloves garlic and 1-2 cups onion. Cook for 2-3 minutes until both are soft."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 3, stepDescription: "Add 1.5 boxes chicken broth. Next add 2 chicken breasts, 2 cans beans, 1 can diced tomatoes, 2 tsp chicken bouillon, dash chicken seasoning, 1 tsp chili powder, 1 tsp cumin, 1 tsp cayenne pepper."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 4, stepDescription: "Close the pot and seal. Cook on manual, high pressure for 20 minutes."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 5, stepDescription: "When finished, natural release for 10 minutes, then quick release."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 6, stepDescription: "Open the pot and remove the chicken breasts. Shred the chicken using a knife and fork, and return the chicken to the Instant Pot."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 7, stepDescription: "Place the Instant Pot on the saute function. Add 1.5 bricks cream cheese, 1 cup shredded Colby/Monterrey Jack, 1 bag frozen corn."}
+    DB.insert container {recipeName: "Creamy White Chicken Chili", stepNumber: 8, stepDescription: "Serve once corn is soft and cheese is melted."}
+    log "Populated recipeSteps"

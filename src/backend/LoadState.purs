@@ -9,7 +9,7 @@ import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
 import Recipes.Backend.DB (QueryError(..), newConnection, printQueryError, readAll, recipeContainer)
-import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeStepsDB, SerializedAppState, SerializedAppStateDB)
+import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, SerializedAppState, SerializedAppStateDB)
 import Recipes.StateSerialization (decodeAppState, encodeAppState)
 
 
