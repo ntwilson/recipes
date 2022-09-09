@@ -34,7 +34,6 @@ jobs:
           path: |
             dist
             release
-            node_modules
             package.json
 
   deploy:
