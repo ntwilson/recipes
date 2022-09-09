@@ -7,11 +7,11 @@
     "test": "test"
   },
   "scripts": {
-    "start-prod": "node release/index.js",
+    "start-prod": "node release/index.mjs",
     "start": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
-    "build": "npm run ps && webpack && spago bundle-app -m Recipes.Backend.Main -t release/index.js --platform node",
+    "build": "npm run ps && webpack && spago bundle-app -m Recipes.Backend.Main -t release/index.mjs --platform node",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
     "setup-db": "spago run -m Recipes.Backend.DB.Setup --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\""
