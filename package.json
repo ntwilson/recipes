@@ -7,14 +7,14 @@
     "test": "test"
   },
   "scripts": {
-    "start": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
+    "start": "node release/index.js",
+    "start-dev": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "build": "npm run ps && webpack && spago bundle-app -m Recipes.Backend.Main -t release/index.js --platform node",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
-    "setup-db": "spago run -m Recipes.Backend.DB.Setup --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
-    "start-db-server": "sudo service postgresql start"
+    "setup-db": "spago run -m Recipes.Backend.DB.Setup --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\""
   },
   "repository": {
     "type": "git",
