@@ -7,8 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "start": "node release/index.js",
-    "start-dev": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
+    "start-prod": "node release/index.js",
+    "start": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
     "build": "npm run ps && webpack && spago bundle-app -m Recipes.Backend.Main -t release/index.js --platform node",
