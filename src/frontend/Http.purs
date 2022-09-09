@@ -12,12 +12,11 @@ else instance BodyType a where bodyStr _ = ""
 
 expectRequest :: ∀ a. BodyType a => Request a -> Aff Unit
 expectRequest rqst = do
-  pure unit
-  -- tryResp <- ?request rqst
-  -- resp <- tryResp # liftErrorVia printError
-  -- if between 200 299 $ ?unwrap resp.status
-  -- then pure unit
-  -- else throw (i"status "(show $ unwrap resp.status)". "(?bodyStr resp) :: String)
+  tryResp <- request rqst
+  resp <- tryResp # liftErrorVia printError
+  if between 200 299 $ unwrap resp.status
+  then pure unit
+  else throw (i"status "(show $ unwrap resp.status)". "(bodyStr resp) :: String)
 
 createQueryParameters :: String -> Map String String -> String
 createQueryParameters url keyPairs =

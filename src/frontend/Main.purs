@@ -21,7 +21,6 @@ import Recipes.Frontend.RecipeList (recipeList)
 import Recipes.Frontend.RecipeSelection (recipeSelection)
 import Recipes.Frontend.RecipeStepList (recipeStepList)
 import Recipes.StateSerialization (decodeAppState)
-import Unsafe.Coerce (unsafeCoerce)
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
@@ -32,8 +31,6 @@ loadRecipes = do
   {body} <- resp # liftErrorVia printError 
   decodeJson body # liftErrorVia printJsonDecodeError 
 
-  where 
-  request = unsafeCoerce
 
 submitRecipes :: List String -> Aff Unit
 submitRecipes recipes = 
@@ -48,9 +45,6 @@ loadRecipesWithSteps = do
   {body} <- resp # liftErrorVia printError 
   decodeJson body # liftErrorVia printJsonDecodeError 
 
-  where 
-  request = unsafeCoerce
-
 selectRecipe :: String -> Aff Unit
 selectRecipe recipe = 
   expectRequest $ defaultRequest 
@@ -64,9 +58,6 @@ loadIngredients = do
   {body} <- resp # liftErrorVia printError 
   decodeJson body # liftErrorVia printJsonDecodeError 
 
-  where 
-  request = unsafeCoerce
-
 loadState :: Aff AppState 
 loadState = do
   resp <- request $ defaultRequest { url = Routing.print Routing.CurrentState, responseFormat = ResponseFormat.json }
@@ -74,9 +65,6 @@ loadState = do
   serialized <- decodeJson body # liftErrorVia printJsonDecodeError 
   ingredients <- loadIngredients
   decodeAppState ingredients serialized
-
-  where 
-  request = unsafeCoerce
 
 inputRecipes :: Widget HTML Unit 
 inputRecipes = do 
