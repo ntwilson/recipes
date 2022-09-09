@@ -12,8 +12,8 @@ export function getContainerImpl(database, containerId) {
 
 // // https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-api-nodejs-get-started?tabs=linux
 export async function queryImpl(container, query, parameters) {
-  const { result } = await container.items.query({ query, parameters }).fetchAll();
-  return result;
+  const {resources} = await container.items.query({ query, parameters }).fetchAll();
+  return resources;
 }
 
 export async function readAllImpl(container) {
@@ -31,8 +31,8 @@ export async function updateImpl(container, item) {
   return resource;
 }
 
-export async function deleteImpl(container, item) {
-  const { resource } = await container.item(item.id, item.category).delete();
+export async function deleteImpl(container, id, partitionKey) {
+  const { resource } = await container.item(id, partitionKey).delete();
   return resource;
 }
 

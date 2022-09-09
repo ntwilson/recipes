@@ -57,7 +57,7 @@ setState state = do
   appStateRecords <- readAllWith (unsafeCoerce Codec.json) appStateCol # withExceptT printQueryError
 
   oldState <- Array.head appStateRecords # note "No appState record found in the database" # except
-  DB.deleteWith (unsafeCoerce Codec.json) appStateCol oldState
+  DB.deleteWith Codec.json Codec.json appStateCol (unsafeCoerce oldState).id (unsafeCoerce oldState).useCase
   DB.insert appStateCol state
 
 
@@ -67,9 +67,10 @@ getSteps recipeName = do
   conn <- newConnection
   stepsCol <- recipeStepsContainer conn
 
-  steps <- DB.query stepsCol 
-    "SELECT * FROM recipeSteps WHERE recipeName = @recipeName ORDER BY stepNumber ASC" 
-    [{ name: "@recipeName", value: encodeJson recipeName }]
+  steps <- 
+    DB.query stepsCol 
+      "SELECT * FROM recipeSteps WHERE recipeSteps.recipeName = @recipeName ORDER BY recipeSteps.stepNumber ASC" 
+      [{ name: "@recipeName", value: encodeJson recipeName }]
     # withExceptT printQueryError
 
   guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # except

@@ -144,13 +144,17 @@ insert container item = do
   promise <- runEffectFn2 insertImpl container (encodeJson item) # try # liftEffect # ExceptT # withExceptT message
   toAff promise # try # liftAff # ExceptT # withExceptT message
 
-foreign import deleteImpl :: ∀ a. EffectFn2 (Container a) Json (Promise Unit) 
-delete :: ∀ a m. MonadAff m => EncodeJson a => Container a -> a -> ExceptT String m Unit
-delete container item = do
-  promise <- runEffectFn2 deleteImpl container (encodeJson item) # try # liftEffect # ExceptT # withExceptT message
+foreign import deleteImpl :: ∀ a. EffectFn3 (Container a) Json Json (Promise Unit) 
+delete :: ∀ a id key m. MonadAff m => EncodeJson id => EncodeJson key => Container a -> id -> key -> ExceptT String m Unit
+delete container itemID itemPartitionKey = do
+  promise <- 
+    runEffectFn3 deleteImpl container (encodeJson itemID) (encodeJson itemPartitionKey) 
+      # try # liftEffect # ExceptT # withExceptT message
   toAff promise # try # liftAff # ExceptT # withExceptT message
 
-deleteWith :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> a -> ExceptT String m Unit
-deleteWith codec container item = do
-  promise <- runEffectFn2 deleteImpl container (Codec.encode codec item) # try # liftEffect # ExceptT # withExceptT message
+deleteWith :: ∀ a id key m. MonadAff m => JsonCodec id -> JsonCodec key -> Container a -> id -> key -> ExceptT String m Unit
+deleteWith idCodec keyCodec container itemID itemPartitionKey = do
+  promise <- 
+    runEffectFn3 deleteImpl container (Codec.encode idCodec itemID) (Codec.encode keyCodec itemPartitionKey) 
+      # try # liftEffect # ExceptT # withExceptT message
   toAff promise # try # liftAff # ExceptT # withExceptT message
