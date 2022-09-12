@@ -49,8 +49,6 @@ type RecipeIngredients = { recipe :: String, ingredient :: String, quantity :: N
 
 type RecipeSteps = { recipeName :: String, stepNumber :: Int, stepDescription :: String }
 
-type SerializedAppState = { name :: String, ingredients :: Maybe String, recipeSteps :: Maybe String }
-
 type RecipeStep = { completed :: Boolean, ordinal :: Int, description :: String }
 type CookingState = { recipe :: String, steps :: List RecipeStep }
 
@@ -100,7 +98,7 @@ shoppingStateCodec allIngredients = basicCodec decode encode
   checkKitchenCodec = listCodec storeItemCodec
   buyGroceriesCodec = Codec.Record.object "BuyGroceries" 
     { storeList: listCodec $ knownStoreItemCodec allIngredients
-    , customItems: listCodec $ knownStoreItemCodec allIngredients
+    , customItems: listCodec storeItemCodec
     }
 
   encode = case _ of

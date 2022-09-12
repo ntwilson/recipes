@@ -3,7 +3,7 @@ module Recipes.API where
 import Shared.Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic, NoArguments)
-import Recipes.DataStructures (CurrentUseCase, Ingredient, RecipeStep, SerializedAppState, StoreItem)
+import Recipes.DataStructures (CurrentUseCase, Ingredient, RecipeStep, StoreItem, AppState)
 import Routing.Duplex (RouteDuplex')
 import Routing.Duplex as Routing
 import Routing.Duplex.Generic as Routing
@@ -66,7 +66,7 @@ type IngredientsValue = Array Ingredient
 type SubmitRecipesValue = Array String
 type SetItemStatusValue = { checked :: Boolean, item :: StoreItem, isCustom :: Boolean }
 type AddItemValue = Ingredient
-type CurrentStateValue = SerializedAppState
+type CurrentStateValue = AppState
 type SelectRecipeValue = String
 type SetRecipeStepStatusValue = RecipeStep
 type SetUseCaseValue = CurrentUseCase

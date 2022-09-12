@@ -12,7 +12,7 @@ import HTTPure as HTTPure
 import HTTPure.Body as Body
 import Node.Encoding (Encoding(..))
 import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue, SetRecipeStepStatusValue, SetUseCaseValue, recipeRouteDuplex, routeStr)
-import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getSerializedState, getState, getSteps, setState)
+import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getState, getSteps, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
 import Routing.Duplex as Routing
@@ -52,7 +52,7 @@ router dist rqst = do
               | otherwise = HTTPure.badRequest "Could not parse request body"
 
         rtr Get (Right CurrentState) = do
-          state <- getSerializedState
+          state <- getState
           HTTPure.ok $ Json.stringify $ encodeJson state
 
         rtr Get (Right ResetState) = do
@@ -87,7 +87,7 @@ router dist rqst = do
 
               | otherwise = HTTPure.badRequest "Could not parse request body"
             
-            processItem { checked, item: submittedItem } items 
+            processItem { checked, item: submittedItem } items
               | checked = List.filter (_.ingredient.name >>> (/=) submittedItem.ingredient.name) items
               | otherwise = submittedItem : items
 

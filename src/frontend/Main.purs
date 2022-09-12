@@ -8,19 +8,19 @@ import Affjax.ResponseFormat as ResponseFormat
 import Concur.React.Props as Props
 import Concur.React.Run (runWidgetInDom)
 import Data.Argonaut (printJsonDecodeError)
+import Data.Codec.Argonaut as Codec
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..))
 import Data.List as List
 import Recipes.API (RecipesValue)
 import Recipes.API as Routing
-import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..))
+import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..), appStateCodec)
 import Recipes.Frontend.GroceryList (groceryList)
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.PantryList (pantryList)
 import Recipes.Frontend.RecipeList (recipeList)
 import Recipes.Frontend.RecipeSelection (recipeSelection)
 import Recipes.Frontend.RecipeStepList (recipeStepList)
-import Recipes.StateSerialization (decodeAppState)
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
@@ -62,9 +62,8 @@ loadState :: Aff AppState
 loadState = do
   resp <- request $ defaultRequest { url = Routing.print Routing.CurrentState, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
-  serialized <- decodeJson body # liftErrorVia printJsonDecodeError 
   ingredients <- loadIngredients
-  decodeAppState ingredients serialized
+  Codec.decode (appStateCodec ingredients) body # liftErrorVia Codec.printJsonDecodeError
 
 inputRecipes :: Widget HTML Unit 
 inputRecipes = do 

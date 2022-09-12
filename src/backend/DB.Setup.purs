@@ -6,11 +6,11 @@ import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
 import Control.Promise (Promise, toAff)
 import Data.List as List
 import Effect.Exception (message)
-import Effect.Uncurried (EffectFn2, EffectFn3, runEffectFn2, runEffectFn3)
-import Recipes.Backend.DB (Container, CosmosClient, Database, PartitionKeyDefinition, appStateContainer, connectionConfig, ingredientsContainer, newClient, newConnection, newPartitionKeyDef, printQueryError, recipeContainer, recipeIngredientsContainer, recipeStepsContainer)
+import Effect.Uncurried (EffectFn2, EffectFn3, runEffectFn3)
+import Recipes.Backend.DB (Container, CosmosClient, Database, PartitionKeyDefinition, appStatePartitionKey, ingredientsPartitionKey, newConnection, partitionKeyDef, printQueryError, recipeIngredientsPartitionKey, recipeStepsPartitionKey, recipesPartitionKey)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
-import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..), appStateCodec)
+import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
 
 main :: Effect Unit
 main = launchAff_ do
@@ -30,29 +30,25 @@ setupDatabase = do
 
 setupSchema :: ∀ m. MonadAff m => ExceptT String m Unit
 setupSchema = do
-  config <- connectionConfig
-  conn <- newClient
-  void $ handleFFI $ runEffectFn2 createDatabase conn config.databaseId
-  log $ i"Created database "config.databaseId
 
   db <- newConnection
   deleteContainer db "recipes" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "recipes" $ newPartitionKeyDef "/name"
-
+  void $ handleFFI $ runEffectFn3 createContainer db "recipes" $ partitionKeyDef recipesPartitionKey
   log "Created recipes container"
+
   deleteContainer db "ingredients" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "ingredients" $ newPartitionKeyDef "/name"
+  void $ handleFFI $ runEffectFn3 createContainer db "ingredients" $ partitionKeyDef ingredientsPartitionKey
   log "Created ingredients container"
 
-  deleteContainer db "recipeIngredients" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "recipeIngredients" $ newPartitionKeyDef "/recipe"
+  -- deleteContainer db "recipeIngredients" # handleFFI # try # void
+  void $ handleFFI $ runEffectFn3 createContainer db "recipeIngredients" $ partitionKeyDef recipeIngredientsPartitionKey
   log "Created recipeIngredients container"
 
-  deleteContainer db "recipeSteps" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "recipeSteps" $ newPartitionKeyDef "/recipeName"
+  -- deleteContainer db "recipeSteps" # handleFFI # try # void
+  void $ handleFFI $ runEffectFn3 createContainer db "recipeSteps" $ partitionKeyDef recipeStepsPartitionKey
   log "Created recipeSteps container"
 
-  void $ handleFFI $ runEffectFn3 createContainer db "appState" $ newPartitionKeyDef "/useCase"
+  void $ handleFFI $ runEffectFn3 createContainer db "appState" $ partitionKeyDef appStatePartitionKey
   log "Created appState container"
 
   where
@@ -63,27 +59,24 @@ setupSchema = do
 
 populateData :: ∀ m. MonadAff m => ExceptT String m Unit
 populateData = do
-  conn <- newConnection
-  populateRecipes conn
-  populateIngredients conn
-  populateRecipeIngredients conn
-  populateRecipeSteps conn
-  populateAppState conn
+  populateRecipes
+  populateIngredients
+  populateRecipeIngredients
+  populateRecipeSteps
+  populateAppState
 
   where
-  populateAppState conn = do
-    container <- appStateContainer conn
-    existingAppState <- DB.readAllWith (appStateCodec $ List.fromFoldable ingredients) container # withExceptT printQueryError
+  populateAppState = do
+    existingAppState <- DB.readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
     case existingAppState of
       [] -> do
-        DB.insert container { useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing }
+        DB.insertAppState (List.fromFoldable ingredients) { useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing }
         log "Populated appState"
       _ -> log "AppState already populated"
 
-  populateRecipes :: Database -> ExceptT String m Unit
-  populateRecipes conn = do
-    container <- recipeContainer conn
-    traverse_ (DB.insert container) recipes
+  populateRecipes :: ExceptT String m Unit
+  populateRecipes = do
+    traverse_ DB.insertRecipe recipes
     log "Populated recipes"
   
   recipes = 
@@ -101,10 +94,9 @@ populateData = do
     , {name: "The Staples"}
     ]
 
-  populateIngredients :: Database -> ExceptT String m Unit
-  populateIngredients conn = do
-    container <- ingredientsContainer conn
-    traverse_ (DB.insert container) ingredients
+  populateIngredients :: ExceptT String m Unit
+  populateIngredients = do
+    traverse_ DB.insertIngredient ingredients
     log "Populated ingredients"
   
   ingredients = 
@@ -196,10 +188,9 @@ populateData = do
     , {name: "White wine vinegar", store: "Harris Teeter", section: Nothing, common: true}
     ]
 
-  populateRecipeIngredients :: Database -> ExceptT String m Unit
-  populateRecipeIngredients conn = do
-    container <- recipeIngredientsContainer conn
-    traverse_ (DB.insert container) recipeIngredients
+  populateRecipeIngredients :: ExceptT String m Unit
+  populateRecipeIngredients = do
+    traverse_ DB.insertRecipeIngredients recipeIngredients
     log "Populated recipeIngredients"
 
   recipeIngredients = 
@@ -356,10 +347,9 @@ populateData = do
     , {recipe: "The Staples", ingredient: "Cream cheese", quantity: 2.0, units: Just "bricks"}
     ]
 
-  populateRecipeSteps :: Database -> ExceptT String m Unit
-  populateRecipeSteps conn = do
-    container <- recipeStepsContainer conn
-    traverse_ (DB.insert container) recipeSteps
+  populateRecipeSteps :: ExceptT String m Unit
+  populateRecipeSteps = do
+    traverse_ DB.insertRecipeSteps recipeSteps
     log "Populated recipeSteps"
 
   recipeSteps = 

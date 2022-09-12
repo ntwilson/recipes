@@ -4,61 +4,43 @@ import Backend.Prelude
 
 import Control.Alternative (guard)
 import Data.Array as Array
-import Data.Codec.Argonaut as Codec
 import Data.List (List)
 import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.DB (appStateContainer, ingredientsContainer, newConnection, printQueryError, readAll, readAllWith, recipeContainer, recipeIngredientsContainer, recipeStepsContainer)
+import Recipes.Backend.DB (newConnection, printQueryError, readAllAppStates, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsContainer)
 import Recipes.Backend.DB as DB
-import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, SerializedAppState, appStateCodec)
-import Recipes.StateSerialization (encodeAppState)
-import Unsafe.Coerce (unsafeCoerce)
+import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeSteps)
 
 
 allRecipes :: ExceptT String Aff RecipesValue
 allRecipes = do 
-  conn <- newConnection
-  container <- recipeContainer conn
-  recipeNames <- readAll container # withExceptT printQueryError
+  recipeNames <- readAllRecipes # withExceptT printQueryError
   pure (recipeNames <#> _.name)
 
 allIngredients :: ExceptT String Aff $ List Ingredient
 allIngredients = do
-  conn <- newConnection
-  container <- ingredientsContainer conn
-  readAll container # withExceptT printQueryError <#> List.fromFoldable
+  readAllIngredients # withExceptT printQueryError <#> List.fromFoldable
 
 allRecipeIngredients :: ExceptT String Aff $ List RecipeIngredients 
 allRecipeIngredients = do
-  conn <- newConnection
-  container <- recipeIngredientsContainer conn
-  readAll container # withExceptT printQueryError <#> List.fromFoldable
-
-getSerializedState :: ExceptT String Aff SerializedAppState
-getSerializedState = encodeAppState <$> getState
+  readAllRecipeIngredients # withExceptT printQueryError <#> List.fromFoldable
 
 getState :: ExceptT String Aff AppState
 getState = do
-  conn <- newConnection
-  ingredientCol <- ingredientsContainer conn
-  appStateCol <- appStateContainer conn
-
-  ingredients <- readAll ingredientCol # withExceptT printQueryError
-  appStateRecords <- readAllWith (appStateCodec $ List.fromFoldable ingredients) appStateCol # withExceptT printQueryError
+  ingredients <- readAllIngredients # withExceptT printQueryError
+  appStateRecords <- readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
 
   Array.head appStateRecords # note "No appState record found in the database" # except
 
 setState :: AppState -> ExceptT String Aff Unit
 setState state = do
-  conn <- newConnection
-  appStateCol <- appStateContainer conn
-
-  appStateRecords <- readAllWith (unsafeCoerce Codec.json) appStateCol # withExceptT printQueryError
+  ingredients <- readAllIngredients # withExceptT printQueryError
+  appStateRecords <- readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
 
   oldState <- Array.head appStateRecords # note "No appState record found in the database" # except
-  DB.deleteWith Codec.json Codec.json appStateCol (unsafeCoerce oldState).id (unsafeCoerce oldState).useCase
-  DB.insert appStateCol state
+  DB.deleteAppState oldState
+  DB.insertAppState (List.fromFoldable ingredients) state
 
 
 
@@ -76,16 +58,12 @@ getSteps recipeName = do
   guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # except
 
   let 
-    cookingStateSteps = steps <#> \step ->
+    cookingStateSteps = steps <#> \(step :: RecipeSteps) ->
       { completed: false, ordinal: step.stepNumber, description: step.stepDescription }
 
   pure { recipe: recipeName, steps: List.fromFoldable cookingStateSteps }
 
 getRecipesWithSteps :: ExceptT String Aff $ Array String 
 getRecipesWithSteps = do
-  conn <- newConnection
-  stepsCol <- recipeStepsContainer conn
-
-  recipes <- DB.readAll stepsCol # withExceptT printQueryError
-
+  recipes <- DB.readAllRecipeSteps # withExceptT printQueryError
   pure $ Array.fromFoldable (Set.fromFoldable (recipes <#> _.recipeName))
