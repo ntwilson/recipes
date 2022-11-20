@@ -30,3 +30,8 @@ jobs:
       - name: test
         run: |
           npm run test
+
+      - name: verify webpack build
+        run: |
+          npm run build
+
