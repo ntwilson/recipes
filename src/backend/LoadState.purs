@@ -9,7 +9,9 @@ import Data.List (List)
 import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.DB (newConnection, printQueryError, readAllAppStates, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
+import Recipes.Backend.CosmosDB (printDeleteError, printQueryError)
+import Recipes.Backend.CosmosDB as Cosmos
+import Recipes.Backend.DB (readAllAppStates, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeSteps)
 
@@ -40,18 +42,17 @@ setState state = do
   appStateRecords <- readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
 
   oldState <- Array.head appStateRecords # note "No appState record found in the database" # except
-  DB.deleteAppState oldState
+  DB.deleteAppState oldState # withExceptT (printDeleteError "appState")
   DB.insertAppState (List.fromFoldable ingredients) state
 
 
 
 getSteps :: String -> ExceptT String Aff CookingState
 getSteps recipeName = do
-  conn <- newConnection
-  stepsCol <- recipeStepsContainer conn
+  stepsCol <- recipeStepsContainer
 
   steps <- 
-    DB.query recipeStepsCodec stepsCol 
+    Cosmos.query recipeStepsCodec stepsCol 
       "SELECT * FROM recipeSteps WHERE recipeSteps.recipeName = @recipeName ORDER BY recipeSteps.stepNumber ASC" 
       [{ name: "@recipeName", value: encode Codec.string recipeName }]
     # withExceptT printQueryError

@@ -39,7 +39,6 @@ You can edit this file as you like.
   , "option"
   , "ordered-collections"
   , "prelude"
-  , "profunctor"
   , "react"
   , "record"
   , "routing-duplex"

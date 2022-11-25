@@ -6,7 +6,8 @@ import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
 import Control.Promise (Promise, toAff)
 import Data.List as List
 import Effect.Exception (message)
-import Recipes.Backend.DB (Container, Database, PartitionKeyDefinition, appStatePartitionKey, ingredientsPartitionKey, newConnection, partitionKeyDef, printQueryError, recipeIngredientsPartitionKey, recipeStepsPartitionKey, recipesPartitionKey)
+import Recipes.Backend.CosmosDB (Container, Database, PartitionKey(..), PartitionKeyDefinition, newConnection, printQueryError)
+import Recipes.Backend.DB (appStatePartitionKey, ingredientsPartitionKey, recipeIngredientsPartitionKey, recipeStepsPartitionKey, recipesPartitionKey)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
@@ -20,6 +21,9 @@ main = launchAff_ do
 
 foreign import createContainer :: ∀ a. EffectFn3 Database String PartitionKeyDefinition (Promise (Container a))
 foreign import deleteContainer :: Database -> String -> Effect (Promise Unit)
+
+partitionKeyDef :: ∀ a. PartitionKey a -> PartitionKeyDefinition
+partitionKeyDef (PartitionKey { def }) = def
 
 setupDatabase :: ∀ m. MonadAff m => ExceptT String m Unit
 setupDatabase = do
