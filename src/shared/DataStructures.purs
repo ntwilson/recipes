@@ -2,16 +2,14 @@ module Recipes.DataStructures where
 
 import Shared.Prelude
 
-import Data.Array as Array
 import Data.Argonaut.Core as Json
-import Data.Codec.Argonaut as Codec
+import Data.Codec.Argonaut.Common as Codec
 import Data.Codec.Argonaut.Compat as Codec.Compat
 import Data.Codec.Argonaut.Generic as Codec
 import Data.Codec.Argonaut.Record as Codec.Record
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.List as List
-import Data.Profunctor (dimap)
 import Data.Show.Generic (genericShow)
 import Foreign.Object as Object
 
@@ -42,7 +40,7 @@ type CookingState = { recipe :: String, steps :: List RecipeStep }
 recipeStepCodec :: JsonCodec RecipeStep
 recipeStepCodec = Codec.Record.object "RecipeStep" { completed: Codec.boolean, ordinal: Codec.int, description: Codec.string }
 cookingStateCodec :: JsonCodec CookingState
-cookingStateCodec = Codec.Record.object "CookingState" { recipe: Codec.string, steps: listCodec recipeStepCodec }
+cookingStateCodec = Codec.Record.object "CookingState" { recipe: Codec.string, steps: Codec.list recipeStepCodec }
 
 type StoreItem = { ingredient :: Ingredient, amount :: String }
 
@@ -67,16 +65,13 @@ derive instance Eq ShoppingState
 derive instance Generic ShoppingState _ 
 instance Show ShoppingState where show = genericShow
 
-listCodec :: ∀ a. JsonCodec a -> JsonCodec (List a)
-listCodec = dimap Array.fromFoldable List.fromFoldable <<< Codec.array
-
 shoppingStateCodec :: List Ingredient -> JsonCodec ShoppingState
 shoppingStateCodec allIngredients = basicCodec decode encode
   where 
-  checkKitchenCodec = listCodec storeItemCodec
+  checkKitchenCodec = Codec.list storeItemCodec
   buyGroceriesCodec = Codec.Record.object "BuyGroceries" 
-    { storeList: listCodec $ knownStoreItemCodec allIngredients
-    , customItems: listCodec storeItemCodec
+    { storeList: Codec.list $ knownStoreItemCodec allIngredients
+    , customItems: Codec.list storeItemCodec
     }
 
   encode = case _ of
