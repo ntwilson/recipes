@@ -2,11 +2,8 @@ module Recipes.DataStructures where
 
 import Shared.Prelude
 
-import Data.Argonaut (Json, JsonDecodeError(..))
-import Data.Argonaut as Json
 import Data.Array as Array
-import Data.Codec (basicCodec)
-import Data.Codec.Argonaut (JsonCodec)
+import Data.Argonaut.Core as Json
 import Data.Codec.Argonaut as Codec
 import Data.Codec.Argonaut.Compat as Codec.Compat
 import Data.Codec.Argonaut.Generic as Codec
@@ -34,16 +31,6 @@ knownIngredientCodec allIngredients = basicCodec decode encode
       Just ingredient -> pure ingredient
       Nothing -> throwError $ Codec.TypeMismatch $ "Unable to find the ingredient named " <> ingredient.name
 
-decodeKnownIngredient :: List Ingredient -> Json -> Either JsonDecodeError Ingredient
-decodeKnownIngredient allIngredients json = do
-  (ingredient :: Ingredient) <- decodeJson json
-  case List.find (_.name >>> (==) ingredient.name) allIngredients of 
-    Just ingredient -> pure ingredient
-    Nothing -> throwError $ TypeMismatch $ "Unable to find the ingredient named " <> ingredient.name
-
-decodeCustomIngredient :: Json -> Either JsonDecodeError Ingredient
-decodeCustomIngredient = decodeJson 
-
 type RecipeIngredients = { recipe :: String, ingredient :: String, quantity :: Number, units :: Maybe String }
 
 
@@ -70,15 +57,6 @@ knownStoreItemCodec allIngredients = basicCodec decode encode
     {ingredient, amount} <- Codec.decode storeItemCodec json
     ingredient <- Codec.decode (knownIngredientCodec allIngredients) $ Codec.encode ingredientCodec ingredient
     pure { ingredient, amount }
-
-decodeKnownStoreItem :: List Ingredient -> Json -> Either JsonDecodeError StoreItem
-decodeKnownStoreItem allIngredients json = do 
-  ({ingredient, amount} :: {ingredient::_, amount::_}) <- decodeJson json
-  ingredient <- decodeKnownIngredient allIngredients ingredient
-  pure {ingredient, amount}
-
-decodeCustomStoreItem :: Json -> Either JsonDecodeError StoreItem
-decodeCustomStoreItem = decodeJson
 
 data ShoppingState 
   = InputRecipes 
@@ -119,50 +97,14 @@ shoppingStateCodec allIngredients = basicCodec decode encode
           pure $ BuyGroceries storeList customItems
         | otherwise = throwError $ Codec.TypeMismatch "`{inputRecipes:_}|{checkKitchen:_}|{buyGroceries:_}"
 
-instance EncodeJson ShoppingState where
-  encodeJson InputRecipes = encodeJson { inputRecipes: {} }
-  encodeJson (CheckKitchen storeList) = encodeJson { checkKitchen: storeList }
-  encodeJson (BuyGroceries storeList customItems) = encodeJson { buyGroceries: {storeList, customItems } }
-
-decodeShoppingState :: List Ingredient -> Json -> Either JsonDecodeError ShoppingState
-decodeShoppingState allIngredients json  
-  | Right ({ inputRecipes: {} } :: { inputRecipes :: {} }) <- decodeJson json = Right InputRecipes 
-  | Right ({ checkKitchen: storeList } :: { checkKitchen :: List Json }) <- decodeJson json = do
-    storeList <- traverse (decodeKnownStoreItem allIngredients) storeList
-    pure $ CheckKitchen storeList
-
-  | Right ({ buyGroceries } :: { buyGroceries :: { storeList :: _, customItems :: _ } }) <- decodeJson json = do
-    storeList <- traverse (decodeKnownStoreItem allIngredients) buyGroceries.storeList
-    customItems <- traverse decodeCustomStoreItem buyGroceries.customItems
-    pure $ BuyGroceries storeList customItems
-
-  | otherwise = Left $ TypeMismatch "`{inputRecipes:{}}` | `{checkKitchen:<StoreItem[]>}` | `{buyGroceries: {storeList<StoreItem[]>, customItems:<StoreItem[]>}}`"
-
 data CurrentUseCase = Shopping | Cooking 
 derive instance Eq CurrentUseCase
 derive instance Generic CurrentUseCase _ 
 instance Show CurrentUseCase where show = genericShow
-instance DecodeJson CurrentUseCase where
-  decodeJson json = case Json.toString json of
-    Just "Shopping" -> Right Shopping
-    Just "Cooking" -> Right Cooking
-    Just _str -> Left $ TypeMismatch "value: 'Shopping'|'Cooking'"
-    Nothing -> Left $ TypeMismatch "String"
-
-instance EncodeJson CurrentUseCase where
-  encodeJson Shopping = encodeJson "Shopping"
-  encodeJson Cooking  = encodeJson "Cooking"
-
 useCaseCodec :: JsonCodec CurrentUseCase
 useCaseCodec = Codec.nullarySum "CurrentUseCase"
 
 type AppState = { useCase :: CurrentUseCase, shoppingState :: ShoppingState, cookingState :: Maybe CookingState }
-decodeAppState :: List Ingredient -> Json -> Either JsonDecodeError AppState
-decodeAppState allIngredients json = do
-  ({useCase, shoppingState, cookingState} :: { useCase::_, shoppingState::_, cookingState::_}) <- decodeJson json
-  shoppingState <- decodeShoppingState allIngredients shoppingState
-  pure { useCase, shoppingState, cookingState }
-
 appStateCodec :: List Ingredient -> JsonCodec AppState
 appStateCodec allIngredients = 
   Codec.Record.object "AppState"

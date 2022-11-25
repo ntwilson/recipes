@@ -7,14 +7,13 @@ import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat as ResponseFormat
 import Concur.React.Props as Props
 import Concur.React.Run (runWidgetInDom)
-import Data.Argonaut (printJsonDecodeError)
-import Data.Codec.Argonaut as Codec
+import Data.Codec.Argonaut.Common as Codec
 import Data.HTTP.Method (Method(..))
 import Data.List (List(..))
 import Data.List as List
 import Recipes.API (RecipesValue)
 import Recipes.API as Routing
-import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..), appStateCodec)
+import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..), appStateCodec, ingredientCodec, useCaseCodec)
 import Recipes.Frontend.GroceryList (groceryList)
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.PantryList (pantryList)
@@ -29,21 +28,21 @@ loadRecipes :: Aff RecipesValue
 loadRecipes = do
   resp <- request $ defaultRequest { url = Routing.print Routing.Recipes, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
-  decodeJson body # liftErrorVia printJsonDecodeError 
+  decode (Codec.array Codec.string) body # liftErrorVia printJsonDecodeError 
 
 
 submitRecipes :: List String -> Aff Unit
 submitRecipes recipes = 
   expectRequest $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SubmitRecipes
-    , content = Just $ RequestBody.Json $ encodeJson recipes
+    , content = Just $ RequestBody.Json $ encode (Codec.list Codec.string) recipes
     }
 
 loadRecipesWithSteps :: Aff RecipesValue 
 loadRecipesWithSteps = do
   resp <- request $ defaultRequest { url = Routing.print Routing.RecipesWithSteps, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
-  decodeJson body # liftErrorVia printJsonDecodeError 
+  decode (Codec.array Codec.string) body # liftErrorVia printJsonDecodeError 
 
 selectRecipe :: String -> Aff Unit
 selectRecipe recipe = 
@@ -56,7 +55,7 @@ loadIngredients :: Aff $ List Ingredient
 loadIngredients = do
   resp <- request $ defaultRequest { url = Routing.print Routing.Ingredients, responseFormat = ResponseFormat.json }
   {body} <- resp # liftErrorVia printError 
-  decodeJson body # liftErrorVia printJsonDecodeError 
+  decode (Codec.list ingredientCodec) body # liftErrorVia printJsonDecodeError 
 
 loadState :: Aff AppState 
 loadState = do
@@ -84,7 +83,7 @@ useCaseBar currentUseCase = do
 
   liftAff $ expectRequest $ defaultRequest
     { url = Routing.print Routing.SetUseCase, method = Left POST
-    , content = Just $ Json $ encodeJson useCase
+    , content = Just $ Json $ encode useCaseCodec useCase
     }
 
   liftEffect (window >>= location >>= reload)

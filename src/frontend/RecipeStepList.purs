@@ -8,7 +8,7 @@ import Data.HTTP.Method (Method(..))
 import Option as Option
 import Recipes.API (SetRecipeStepStatusValue)
 import Recipes.API as Routing
-import Recipes.DataStructures (RecipeStep, CookingState)
+import Recipes.DataStructures (CookingState, RecipeStep, recipeStepCodec)
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.MUI as MUI
 import Web.HTML (window)
@@ -39,7 +39,7 @@ recipeStepList state@{recipe, steps} = do
   where
     checkStep step = launchAff_ $ expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print Routing.SetRecipeStatus
-      , content = Just $ Json $ encodeJson step
+      , content = Just $ Json $ encode recipeStepCodec step
       }
 
     resetRecipe = expectRequest $ defaultRequest { method = Left GET, url = Routing.print Routing.ResetRecipe }

@@ -2,8 +2,10 @@ module Recipes.API where
 
 import Shared.Prelude hiding ((/))
 
+import Data.Codec.Argonaut as Codec
+import Data.Codec.Argonaut.Record as Codec.Record
 import Data.Generic.Rep (class Generic, NoArguments)
-import Recipes.DataStructures (CurrentUseCase, Ingredient, RecipeStep, StoreItem, AppState)
+import Recipes.DataStructures (AppState, CurrentUseCase, Ingredient, RecipeStep, StoreItem, storeItemCodec)
 import Routing.Duplex (RouteDuplex')
 import Routing.Duplex as Routing
 import Routing.Duplex.Generic as Routing
@@ -65,6 +67,8 @@ type RecipesValue = Array String
 type IngredientsValue = Array Ingredient
 type SubmitRecipesValue = Array String
 type SetItemStatusValue = { checked :: Boolean, item :: StoreItem, isCustom :: Boolean }
+setItemStatusCodec :: JsonCodec SetItemStatusValue
+setItemStatusCodec = Codec.Record.object "SetItemStatusValue" { checked: Codec.boolean, item: storeItemCodec, isCustom: Codec.boolean }
 type AddItemValue = Ingredient
 type CurrentStateValue = AppState
 type SelectRecipeValue = String

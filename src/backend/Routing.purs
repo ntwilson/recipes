@@ -3,7 +3,9 @@ module Recipes.Backend.Routing where
 import Backend.Prelude
 
 import Control.Monad.Except (runExceptT)
-import Data.Argonaut as Json
+import Data.Argonaut.Core as Json
+import Data.Argonaut.Parser as Json
+import Data.Codec.Argonaut.Common as Codec
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.String.CaseInsensitive (CaseInsensitiveString(..))
@@ -11,10 +13,10 @@ import HTTPure (Method(..))
 import HTTPure as HTTPure
 import HTTPure.Body as Body
 import Node.Encoding (Encoding(..))
-import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue, SetRecipeStepStatusValue, SetUseCaseValue, recipeRouteDuplex, routeStr)
+import Recipes.API (AddItemValue, RecipeRoute(..), recipeRouteDuplex, routeStr, setItemStatusCodec)
 import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getState, getSteps, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
-import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
+import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..), appStateCodec, ingredientCodec, recipeStepCodec, useCaseCodec)
 import Routing.Duplex as Routing
 
 router :: String -> HTTPure.Request -> HTTPure.ResponseM
@@ -30,18 +32,18 @@ router dist rqst = do
         rtr Get (Right JS) = lift $ serveJavascript (i dist"/main.js")
 
         rtr Get (Right Recipes) = do
-          contents <- encodeJson <$> allRecipes
+          contents <- encode (Codec.array Codec.string) <$> allRecipes
           HTTPure.ok $ Json.stringify contents
 
         rtr Get (Right Ingredients) = do
-          contents <- encodeJson <$> allIngredients
+          contents <- encode (Codec.list ingredientCodec) <$> allIngredients
           HTTPure.ok $ Json.stringify contents
 
         rtr Post (Right SubmitRecipes) = go 
           where 
             go
-              | Right json <- Json.parseJson body
-              , Right (submittedRecipes :: List String) <- decodeJson json = do
+              | Right json <- Json.jsonParser body
+              , Right (submittedRecipes :: List String) <- decode (Codec.list Codec.string) json = do
                 pairings <- allRecipeIngredients
                 ingredients <- allIngredients
                 state <- getState
@@ -53,7 +55,8 @@ router dist rqst = do
 
         rtr Get (Right CurrentState) = do
           state <- getState
-          HTTPure.ok $ Json.stringify $ encodeJson state
+          ingredients <- allIngredients
+          HTTPure.ok $ Json.stringify $ encode (appStateCodec ingredients) state
 
         rtr Get (Right ResetState) = do
           state <- getState
@@ -71,8 +74,8 @@ router dist rqst = do
         rtr Post (Right SetItemStatus) = go
           where
             go 
-              | Right json <- Json.parseJson body
-              , Right (submittedItem :: SetItemStatusValue) <- decodeJson json = do
+              | Right json <- Json.jsonParser body
+              , Right submittedItem <- decode setItemStatusCodec json = do
                 state <- getState 
                 case state of 
                   {useCase:Shopping, shoppingState: CheckKitchen items} -> do
@@ -94,8 +97,8 @@ router dist rqst = do
         rtr Post (Right AddItem) = go 
           where 
             go 
-              | Right json <- Json.parseJson body 
-              , Right (submittedItem :: AddItemValue) <- decodeJson json = do
+              | Right json <- Json.jsonParser body 
+              , Right submittedItem <- decode ingredientCodec json = do
                 state <- getState
                 case state of
                   {useCase: Shopping, shoppingState: BuyGroceries items custom} -> do
@@ -137,8 +140,8 @@ router dist rqst = do
         rtr Post (Right SetRecipeStatus) = go
           where 
             go 
-              | Right json <- Json.parseJson body 
-              , Right (submittedItem :: SetRecipeStepStatusValue) <- decodeJson json = do
+              | Right json <- Json.jsonParser body 
+              , Right submittedItem <- decode recipeStepCodec json = do
                 state <- getState
                 case state.cookingState of
                   Nothing -> HTTPure.conflict "The application is not in a state such that modifying recipe steps is possible."
@@ -156,7 +159,7 @@ router dist rqst = do
 
         rtr Get (Right RecipesWithSteps) = do
           recipes <- getRecipesWithSteps 
-          HTTPure.ok $ Json.stringify $ encodeJson recipes
+          HTTPure.ok $ Json.stringify $ encode (Codec.array Codec.string) recipes
 
         rtr Post (Right SelectRecipe) = do
           state <- getState
@@ -167,8 +170,8 @@ router dist rqst = do
         rtr Post (Right SetUseCase) = go
           where 
             go
-              | Right json <- Json.parseJson body 
-              , Right (submittedItem :: SetUseCaseValue) <- decodeJson json = do
+              | Right json <- Json.jsonParser body 
+              , Right submittedItem <- decode useCaseCodec json = do
                 state <- getState
                 setState $ state { useCase = submittedItem } 
                 HTTPure.noContent

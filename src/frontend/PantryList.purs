@@ -7,7 +7,7 @@ import Concur.React.Props as Props
 import Data.HTTP.Method (Method(..))
 import Data.List (List)
 import Data.List as List
-import Recipes.API (RecipeRoute(..), SetItemStatusValue)
+import Recipes.API (RecipeRoute(..), SetItemStatusValue, setItemStatusCodec)
 import Recipes.API as Routing
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
@@ -42,5 +42,5 @@ pantryList items = do
 
     checkItem item = launchAff_ $ expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print SetItemStatus
-      , content = Just $ RequestBody.Json $ encodeJson item
+      , content = Just $ RequestBody.Json $ encode setItemStatusCodec item
       }
