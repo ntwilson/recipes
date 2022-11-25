@@ -4,11 +4,12 @@ import Backend.Prelude
 
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Codec.Argonaut as Codec
 import Data.List (List)
 import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.DB (newConnection, printQueryError, readAllAppStates, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsContainer)
+import Recipes.Backend.DB (newConnection, printQueryError, readAllAppStates, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeSteps)
 
@@ -50,9 +51,9 @@ getSteps recipeName = do
   stepsCol <- recipeStepsContainer conn
 
   steps <- 
-    DB.query stepsCol 
+    DB.query recipeStepsCodec stepsCol 
       "SELECT * FROM recipeSteps WHERE recipeSteps.recipeName = @recipeName ORDER BY recipeSteps.stepNumber ASC" 
-      [{ name: "@recipeName", value: encodeJson recipeName }]
+      [{ name: "@recipeName", value: encode Codec.string recipeName }]
     # withExceptT printQueryError
 
   guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # except

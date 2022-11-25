@@ -32,6 +32,7 @@ module Recipes.Backend.DB
   , readAllRecipeSteps
   , readAllRecipes
   , recipeIngredientsPartitionKey
+  , recipeStepsCodec
   , recipeStepsContainer
   , recipeStepsPartitionKey
   , recipesContainer
@@ -42,13 +43,13 @@ module Recipes.Backend.DB
 import Backend.Prelude
 
 import Control.Promise (Promise, toAff)
-import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), printJsonDecodeError, (.:))
 import Data.Array as Array
 import Data.Codec.Argonaut as Codec
-import Effect.Exception (message)
-import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn3, runEffectFn1, runEffectFn2, runEffectFn3)
+import Data.Codec.Argonaut.Compat as Codec.Compat
+import Data.Codec.Argonaut.Record as Codec.Record
 import Recipes.DataStructures (AppState, Ingredient, RecipeSteps, RecipeIngredients, appStateCodec)
-import Unsafe.Coerce (unsafeCoerce)
+import Record as Record
+import Type.Proxy (Proxy(..))
 
 type ConnectConfig = 
   { endpoint :: String
@@ -83,15 +84,18 @@ connectionConfig = do
       Nothing -> throwError $ i"No "keyname" environment variable found"
       Just key -> pure key
 
+catchEffect :: ∀ m a. MonadEffect m => Effect a -> ExceptT String m a
+catchEffect = try >>> liftEffect >>> ExceptT >>> withExceptT message
+
 newClient :: ∀ m. MonadEffect m => ExceptT String m CosmosClient
 newClient = do
   config <- connectionConfig
-  runEffectFn1 cosmosClient config # try # liftEffect # ExceptT # withExceptT message
+  runEffectFn1 cosmosClient config # catchEffect
 
 newConnection :: ∀ m. MonadEffect m => ExceptT String m Database
 newConnection = do
   config <- connectionConfig
-  runEffectFn1 database config # try # liftEffect # ExceptT # withExceptT message
+  runEffectFn1 database config # catchEffect
 
 foreign import data Database :: Type
 foreign import data RawContainer :: Type
@@ -102,15 +106,12 @@ foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 
 getContainer :: ∀ m. MonadEffect m => String -> Database -> ExceptT String m RawContainer
 getContainer containerName database = 
-  runEffectFn2 getContainerImpl database containerName # try # liftEffect # ExceptT # withExceptT message
+  runEffectFn2 getContainerImpl database containerName # catchEffect
 
 newtype Container a = Container 
   { raw :: RawContainer
   , partitionKey :: PartitionKey a
   }
-
-
-
 
 data QueryError = DBError Error | JsonError JsonDecodeError
 printQueryError :: QueryError -> String
@@ -119,44 +120,35 @@ printQueryError (JsonError err) = printJsonDecodeError err
 
 type QueryParameter = { name :: String, value :: Json }
 foreign import queryImpl :: EffectFn3 RawContainer String (Array QueryParameter) (Promise (Array Json))
-query :: ∀ a b m. MonadAff m => DecodeJson b => Container a -> String -> Array QueryParameter -> ExceptT QueryError m (Array b)
-query (Container {raw}) query parameters = parseQueryResults decodeClassy $ runEffectFn3 queryImpl raw query parameters
+query :: ∀ a b m. MonadAff m => JsonCodec b -> Container a -> String -> Array QueryParameter -> ExceptT QueryError m (Array b)
+query codec (Container {raw}) query parameters = parseQueryResults codec $ runEffectFn3 queryImpl raw query parameters
 
 foreign import readAllImpl :: EffectFn1 RawContainer (Promise (Array Json))
 
-readAll :: ∀ a m. MonadAff m => (Json -> Either JsonDecodeError a) -> (Database -> ExceptT String m (Container a)) -> ExceptT QueryError m (Array a)
-readAll decode container = do 
+readAll :: ∀ a m. MonadAff m => JsonCodec a -> (Database -> ExceptT String m (Container a)) -> ExceptT QueryError m (Array a)
+readAll codec container = do 
   conn <- newConnection # withExceptT (error >>> DBError)
   (Container {raw})  <- container conn # withExceptT (error >>> DBError)
-  parseQueryResults (lmap JsonError <<< decode) $ runEffectFn1 readAllImpl raw
+  parseQueryResults codec $ runEffectFn1 readAllImpl raw
 
-decodeClassy :: ∀ a. DecodeJson a => Json -> Either QueryError a
-decodeClassy = decodeJson >>> lmap JsonError
-
-codecErrToClassyErr :: Codec.JsonDecodeError -> JsonDecodeError
-codecErrToClassyErr = case _ of
-  Codec.TypeMismatch str -> TypeMismatch str
-  Codec.UnexpectedValue json -> UnexpectedValue json
-  Codec.AtIndex i err -> AtIndex i $ codecErrToClassyErr err
-  Codec.AtKey k err -> AtKey k $ codecErrToClassyErr err
-  Codec.Named name err -> Named name $ codecErrToClassyErr err
-  Codec.MissingValue -> MissingValue
-
-parseQueryResults :: ∀ m a. MonadAff m => (Json -> Either QueryError a) -> Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
-parseQueryResults decode rawResult = do
+parseQueryResults :: ∀ m a. MonadAff m => JsonCodec a -> Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
+parseQueryResults codec rawResult = do
   results <- effPromiseToAff rawResult # withExceptT DBError
-  traverse decode results # except
+  traverse (decode codec >>> lmap JsonError) results # except
 
 
 foreign import insertImpl :: EffectFn2 RawContainer Json (Promise Unit)
-insert :: ∀ a m. MonadAff m => (a -> Json) -> (Database -> ExceptT String m (Container a)) -> a -> ExceptT String m Unit
-insert encode container item = do
+insert :: ∀ a m. MonadAff m => JsonCodec a -> (Database -> ExceptT String m (Container a)) -> a -> ExceptT String m Unit
+insert codec container item = do
   conn <- newConnection
   (Container {raw}) <- container conn
-  runEffectFn2 insertImpl raw (encode item) # effPromiseToAff # withExceptT message
+  runEffectFn2 insertImpl raw (encode codec item) # effPromiseToAff # withExceptT message
 
+-- all records in a cosmos database come with an id field.
+getID :: Json -> String
+getID json = (unsafeCoerce json).id
 
-foreign import deleteImpl :: EffectFn3 RawContainer Json String (Promise Unit) 
+foreign import deleteImpl :: EffectFn3 RawContainer String String (Promise Unit) 
 
 delete :: ∀ a m. MonadAff m => 
   (Container a -> a -> ExceptT String m Json) -> (Database -> ExceptT String m (Container a)) -> a -> ExceptT String m Unit
@@ -166,7 +158,7 @@ delete dbLookup createContainer item = do
   json <- dbLookup container item
 
   let
-    itemID = (unsafeCoerce json).id -- all records in a cosmos database come with an id field
+    itemID = getID json
     itemPartitionKey = accessor item
 
   runEffectFn3 deleteImpl raw itemID itemPartitionKey # effPromiseToAff # withExceptT message
@@ -176,7 +168,7 @@ effPromiseToAff eff = do
   promise <- eff # try # liftEffect # ExceptT
   toAff promise # try # liftAff # ExceptT
 
-foreign import getItemImpl :: EffectFn3 RawContainer Json String (Promise Json)
+foreign import getItemImpl :: EffectFn3 RawContainer String String (Promise Json)
 
 type ReadAll m a = MonadAff m => ExceptT QueryError m (Array a)
 type Insert m a = MonadAff m => a -> ExceptT String m Unit
@@ -184,63 +176,68 @@ type Delete m a = MonadAff m => a -> ExceptT String m Unit
 
 recipesPartitionKey :: PartitionKey {name :: String}
 recipesPartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor: _.name }
-decodeRecipe :: Json -> Either JsonDecodeError {name::String}
-decodeRecipe json = do
-  obj <- decodeJson json
-  obj .: "id" <#> {name: _}
-encodeRecipe :: {name::String} -> Json
-encodeRecipe {name} = encodeJson {id: name}
+getRecipeID :: {name::String} -> String
+getRecipeID = getID <<< encode recipeCodec
+recipeCodec :: JsonCodec {name::String}
+recipeCodec = basicCodec decoder encoder
+  where
+  codec = Codec.Record.object "Recipe" {id: Codec.string}
+  encoder {name} = encode codec {id: name}
+  decoder json = decode codec json <#> Record.rename (Proxy :: _ "id") (Proxy :: _ "name")
 recipesContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container {name::String})
 recipesContainer conn = do 
   raw <- getContainer "recipes" conn
   pure $ Container { raw, partitionKey: recipesPartitionKey }
 getRecipeFromDB :: ∀ m. MonadAff m => Container {name::String} -> {name::String} -> ExceptT String m Json
-getRecipeFromDB (Container {raw}) recipe = 
-  runEffectFn3 getItemImpl raw (encodeJson recipe.name) recipe.name # effPromiseToAff # withExceptT message
+getRecipeFromDB (Container {raw, partitionKey: PartitionKey {accessor}}) recipe = 
+  runEffectFn3 getItemImpl raw (getRecipeID recipe) (accessor recipe) # effPromiseToAff # withExceptT message
   
 readAllRecipes :: ∀ m. ReadAll m {name::String}
-readAllRecipes = readAll decodeRecipe recipesContainer
+readAllRecipes = readAll recipeCodec recipesContainer
 insertRecipe :: ∀ m. Insert m {name::String}
-insertRecipe = insert encodeRecipe recipesContainer
+insertRecipe = insert recipeCodec recipesContainer
 deleteRecipe :: ∀ m. Delete m {name::String}
 deleteRecipe = delete getRecipeFromDB recipesContainer 
 
 ingredientsPartitionKey :: PartitionKey Ingredient
 ingredientsPartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor: _.name }
-encodeIngredient :: Ingredient -> Json
-encodeIngredient { name, store, section, common } = encodeJson { id: name, store, section, common }
-decodeIngredient :: Json -> Either JsonDecodeError Ingredient
-decodeIngredient json = do
-  ({ id, store, section, common } :: { id::_, store::_, section::_, common::_ }) <- decodeJson json
-  pure { name: id, store, section, common }
+getIngredientID :: Ingredient -> String
+getIngredientID = getID <<< encode ingredientCodec
+ingredientCodec :: JsonCodec Ingredient
+ingredientCodec = basicCodec decoder encoder
+  where
+  codec = Codec.Record.object "Ingredient" 
+    { id: Codec.string, store: Codec.string, section: Codec.Compat.maybe Codec.string, common: Codec.boolean }
+  encoder {name, store, section, common} = encode codec {id: name, store, section, common}
+  decoder json = decode codec json <#> Record.rename (Proxy :: _ "id") (Proxy :: _ "name")
+
 ingredientsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container Ingredient)
 ingredientsContainer conn = do
   raw <- getContainer "ingredients" conn
   pure $ Container { raw, partitionKey: ingredientsPartitionKey }
 getIngredientFromDB :: ∀ m. MonadAff m => Container Ingredient -> Ingredient -> ExceptT String m Json
-getIngredientFromDB (Container {raw}) ingredient = 
-  runEffectFn3 getItemImpl raw (encodeJson ingredient.name) ingredient.name # effPromiseToAff # withExceptT message
+getIngredientFromDB (Container {raw, partitionKey: PartitionKey {accessor}}) ingredient = 
+  runEffectFn3 getItemImpl raw (getIngredientID ingredient) (accessor ingredient) # effPromiseToAff # withExceptT message
 
 readAllIngredients :: ∀ m. ReadAll m Ingredient
-readAllIngredients = readAll decodeIngredient ingredientsContainer
+readAllIngredients = readAll ingredientCodec ingredientsContainer
 insertIngredient :: ∀ m. Insert m Ingredient
-insertIngredient = insert encodeIngredient ingredientsContainer
+insertIngredient = insert ingredientCodec ingredientsContainer
 deleteIngredient :: ∀ m. Delete m Ingredient
 deleteIngredient = delete getIngredientFromDB ingredientsContainer
 
 recipeIngredientsPartitionKey :: PartitionKey RecipeIngredients
 recipeIngredientsPartitionKey = PartitionKey { def: newPartitionKeyDef "/recipe", accessor: _.recipe }
-encodeRecipeIngredients :: RecipeIngredients -> Json
-encodeRecipeIngredients = encodeJson
-decodeRecipeIngredients :: Json -> Either JsonDecodeError RecipeIngredients
-decodeRecipeIngredients = decodeJson
+recipeIngredientsCodec :: JsonCodec RecipeIngredients
+recipeIngredientsCodec = Codec.Record.object "RecipeIngredients"
+  { recipe: Codec.string, ingredient: Codec.string, quantity: Codec.number, units: Codec.Compat.maybe Codec.string }
 recipeIngredientsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container RecipeIngredients)
 recipeIngredientsContainer conn = do
   raw <- getContainer "recipeIngredients" conn
   pure $ Container { raw, partitionKey: recipeIngredientsPartitionKey }
 getRecipeIngredientsFromDB :: ∀ m. MonadAff m => Container RecipeIngredients -> RecipeIngredients -> ExceptT String m Json
 getRecipeIngredientsFromDB (Container {raw}) recipeIngredient = do
-  steps <- parseQueryResults (lmap JsonError <<< decode) (runEffectFn1 readAllImpl raw) # withExceptT printQueryError
+  steps <- runEffectFn1 readAllImpl raw # parseQueryResults codec # withExceptT printQueryError
   step <- 
     steps 
     # Array.find (\{decoded} -> recipeIngredient.recipe == decoded.recipe && recipeIngredient.ingredient == decoded.ingredient)
@@ -250,31 +247,32 @@ getRecipeIngredientsFromDB (Container {raw}) recipeIngredient = do
   pure step.json
 
   where
-  decode json = do
-    decoded <- decodeRecipeIngredients json
+  codec = basicCodec decoder encoder
+  decoder json = do
+    decoded <- decode recipeIngredientsCodec json
     pure {json, decoded}
+  encoder {json} = json
 
 
 readAllRecipeIngredients :: ∀ m. ReadAll m RecipeIngredients
-readAllRecipeIngredients = readAll decodeRecipeIngredients recipeIngredientsContainer
+readAllRecipeIngredients = readAll recipeIngredientsCodec recipeIngredientsContainer
 insertRecipeIngredients :: ∀ m. Insert m RecipeIngredients
-insertRecipeIngredients = insert encodeRecipeIngredients recipeIngredientsContainer
+insertRecipeIngredients = insert recipeIngredientsCodec recipeIngredientsContainer
 deleteRecipeIngredients :: ∀ m. Delete m RecipeIngredients
 deleteRecipeIngredients = delete getRecipeIngredientsFromDB recipeIngredientsContainer
 
 recipeStepsPartitionKey :: PartitionKey RecipeSteps
 recipeStepsPartitionKey = PartitionKey { def: newPartitionKeyDef "/recipeName", accessor: _.recipeName }
-encodeRecipeSteps :: RecipeSteps -> Json
-encodeRecipeSteps = encodeJson
-decodeRecipeSteps :: Json -> Either JsonDecodeError RecipeSteps
-decodeRecipeSteps = decodeJson
+recipeStepsCodec :: JsonCodec RecipeSteps
+recipeStepsCodec = Codec.Record.object "RecipeSteps" 
+  { recipeName: Codec.string, stepNumber: Codec.int, stepDescription: Codec.string }
 recipeStepsContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container RecipeSteps)
 recipeStepsContainer conn = do
   raw <- getContainer "recipeSteps" conn
   pure $ Container { raw, partitionKey: recipeStepsPartitionKey }
 getRecipeStepsFromDB :: ∀ m. MonadAff m => Container RecipeSteps -> RecipeSteps -> ExceptT String m Json
 getRecipeStepsFromDB (Container {raw}) recipeStep = do
-  steps <- parseQueryResults (lmap JsonError <<< decode) (runEffectFn1 readAllImpl raw) # withExceptT printQueryError
+  steps <- parseQueryResults codec (runEffectFn1 readAllImpl raw) # withExceptT printQueryError
   step <- 
     steps 
     # Array.find (\{decoded} -> recipeStep.recipeName == decoded.recipeName && recipeStep.stepNumber == decoded.stepNumber)
@@ -284,39 +282,34 @@ getRecipeStepsFromDB (Container {raw}) recipeStep = do
   pure step.json
 
   where
-  decode json = do
-    decoded <- decodeRecipeSteps json
+  codec = basicCodec decoder encoder
+  decoder json = do
+    decoded <- decode recipeStepsCodec json
     pure {json, decoded}
+  encoder {json} = json
 
 readAllRecipeSteps :: ∀ m. ReadAll m RecipeSteps
-readAllRecipeSteps = readAll decodeRecipeSteps recipeStepsContainer
+readAllRecipeSteps = readAll recipeStepsCodec recipeStepsContainer
 insertRecipeSteps :: ∀ m. Insert m RecipeSteps
-insertRecipeSteps = insert encodeRecipeSteps recipeStepsContainer
+insertRecipeSteps = insert recipeStepsCodec recipeStepsContainer
 deleteRecipeSteps :: ∀ m. Delete m RecipeSteps
 deleteRecipeSteps = delete getRecipeStepsFromDB recipeStepsContainer
 
 appStatePartitionKey :: PartitionKey AppState
 appStatePartitionKey = PartitionKey { def: newPartitionKeyDef "/useCase", accessor: show <<< _.useCase }
-encodeAppState :: _ -> AppState -> Json
-encodeAppState ingredients = Codec.encode $ appStateCodec ingredients
-decodeAppState :: _ -> Json -> Either JsonDecodeError AppState
-decodeAppState ingredients = Codec.decode (appStateCodec ingredients) >>> lmap codecErrToClassyErr
 appStateContainer :: ∀ m. MonadEffect m => Database -> ExceptT String m (Container AppState)
 appStateContainer conn = do
   raw <- getContainer "appState" conn
   pure $ Container { raw, partitionKey: appStatePartitionKey }
 getAppStateFromDB :: ∀ m. MonadAff m => Container AppState -> AppState -> ExceptT String m Json
 getAppStateFromDB (Container {raw}) _ = do
-  steps <- parseQueryResults (lmap JsonError <<< decode) (runEffectFn1 readAllImpl raw) # withExceptT printQueryError
+  steps <- parseQueryResults Codec.json (runEffectFn1 readAllImpl raw) # withExceptT printQueryError
   step <- steps # Array.head # note "No app state found" # except
   pure step
 
-  where
-  decode json = pure json
-
 readAllAppStates :: ∀ m. _ -> ReadAll m AppState
-readAllAppStates ingredients = readAll (decodeAppState ingredients) appStateContainer
+readAllAppStates ingredients = readAll (appStateCodec ingredients) appStateContainer
 insertAppState :: ∀ m. _ -> Insert m AppState
-insertAppState ingredients = insert (encodeAppState ingredients) appStateContainer
+insertAppState ingredients = insert (appStateCodec ingredients) appStateContainer
 deleteAppState :: ∀ m. Delete m AppState
 deleteAppState = delete getAppStateFromDB appStateContainer

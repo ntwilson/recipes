@@ -9,8 +9,9 @@ import Data.List as List
 import Data.List.NonEmpty as NEList
 import Data.List.Types (List, NonEmptyList)
 import Option as Option
-import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue)
+import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue, setItemStatusCodec)
 import Recipes.API as Routing
+import Recipes.DataStructures (ingredientCodec)
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
 import Recipes.Frontend.MUI (TextSize(..))
@@ -104,7 +105,7 @@ groceryItems items = do
 
     checkItem item = launchAff_ $ expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print SetItemStatus
-      , content = Just $ RequestBody.Json $ encodeJson item
+      , content = Just $ RequestBody.Json $ encode setItemStatusCodec item
       }
 
 addItemToListForm :: Widget HTML GroceryListAction
@@ -118,7 +119,7 @@ addItemToListForm = do
     submitItem item = 
       expectRequest $ defaultRequest
         { method = Left POST, url = Routing.print AddItem
-        , content = Just $ RequestBody.Json $ encodeJson item
+        , content = Just $ RequestBody.Json $ encode ingredientCodec item
         }
 
 resetGroceryListButton :: Widget HTML GroceryListAction
