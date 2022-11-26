@@ -31,9 +31,9 @@ export async function updateImpl(container, item) {
   return resource;
 }
 
-export async function getItemImpl(container, id, partitionKey) { 
-  const {body} = await container.item(id, partitionKey).read();
-  return body;
+export async function getItemImpl(just, nothing, container, id, partitionKey) { 
+  const {resource} = await container.item(id, partitionKey).read();
+  if (!resource) { return nothing; } else { return just(resource); }
 }
 
 export async function deleteImpl(container, id, partitionKey) {

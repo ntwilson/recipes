@@ -100,11 +100,13 @@ useCaseCodec :: JsonCodec CurrentUseCase
 useCaseCodec = Codec.nullarySum "CurrentUseCase"
 
 type AppState = { useCase :: CurrentUseCase, shoppingState :: ShoppingState, cookingState :: Maybe CookingState }
+
+appStateCodecFields :: _ -> _
+appStateCodecFields allIngredients =
+  { useCase: useCaseCodec
+  , shoppingState: shoppingStateCodec allIngredients
+  , cookingState: Codec.Compat.maybe cookingStateCodec
+  }
 appStateCodec :: List Ingredient -> JsonCodec AppState
-appStateCodec allIngredients = 
-  Codec.Record.object "AppState"
-    { useCase: useCaseCodec
-    , shoppingState: shoppingStateCodec allIngredients
-    , cookingState: Codec.Compat.maybe cookingStateCodec
-    }
+appStateCodec allIngredients = Codec.Record.object "AppState" $ appStateCodecFields allIngredients
 

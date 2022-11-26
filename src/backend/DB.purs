@@ -13,7 +13,7 @@ module Recipes.Backend.DB
   , insertRecipe
   , insertRecipeIngredients
   , insertRecipeSteps
-  , readAllAppStates
+  , readAppState
   , readAllIngredients
   , readAllRecipeIngredients
   , readAllRecipeSteps
@@ -29,12 +29,12 @@ module Recipes.Backend.DB
 
 import Backend.Prelude
 
-import Data.Argonaut.Core as Json
 import Data.Codec.Argonaut as Codec
 import Data.Codec.Argonaut.Compat as Codec.Compat
 import Data.Codec.Argonaut.Record as Codec.Record
-import Recipes.Backend.CosmosDB (Container, DeleteError(..), ItemID(..), PartitionKey(..), QueryError(..), deleteViaFind, getContainer, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
-import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, RecipeSteps, ShoppingState(..), appStateCodec, cookingStateCodec, useCaseCodec)
+import Data.List (List)
+import Recipes.Backend.CosmosDB (Container, DeleteError(..), ItemID(..), PartitionKey(..), QueryError(..), deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
+import Recipes.DataStructures (AppState, Ingredient, RecipeIngredients, RecipeSteps, appStateCodecFields)
 import Record as Record
 import Type.Proxy (Proxy(..))
 
@@ -137,28 +137,33 @@ deleteRecipeSteps item = do
   where 
   equate = equating _.recipeName && equating _.stepNumber -- b.recipeName == a.recipeName && b.stepNumber == a.stepNumber
 
+appStatePartitionKeyValue :: String
+appStatePartitionKeyValue = "singleton"
+appStateID :: ItemID
+appStateID = ItemID appStatePartitionKeyValue
 appStatePartitionKey :: PartitionKey AppState
-appStatePartitionKey = PartitionKey { def: newPartitionKeyDef "/useCase", accessor: show <<< _.useCase }
+appStatePartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor: const appStatePartitionKeyValue }
 appStateContainer :: ∀ m. MonadEffect m => ExceptT String m (Container AppState)
 appStateContainer = getContainer "appState" appStatePartitionKey
-readAllAppStates :: ∀ m. _ -> ReadAll m AppState
-readAllAppStates ingredients = readAll (appStateCodec ingredients) =<< withExceptT (error >>> DBError) appStateContainer
+appStateDBCodec :: _ -> _
+appStateDBCodec ingredients = basicCodec decoder encoder
+  where
+  itemIDCodec :: JsonCodec ItemID
+  itemIDCodec = unsafeCoerce Codec.string
+  codec = appStateCodecFields ingredients # Record.insert (Proxy :: _ "id") itemIDCodec # Codec.Record.object "AppState"
+  encoder appState = encode codec $ Record.insert (Proxy :: _ "id") appStateID appState
+  decoder json = decode codec json <#> Record.delete (Proxy :: _ "id")
+
+readAppState :: ∀ m. MonadAff m => List Ingredient -> ExceptT QueryError m (Maybe AppState)
+readAppState ingredients = do
+  container <- withExceptT (error >>> DBError) appStateContainer
+  getItem (appStateDBCodec ingredients) container appStateID appStatePartitionKeyValue
 insertAppState :: ∀ m. _ -> Insert m AppState
 insertAppState ingredients item = do
   container <- appStateContainer
-  insert (appStateCodec ingredients) container item
+  insert (appStateDBCodec ingredients) container item
 
--- AppState is a singleton, so we're doing a bit of gymnastics to make the types align, even though it's just
--- deleting the only record in the table.  It's not actually a lookup.
-deleteAppState :: ∀ m. Delete m AppState
-deleteAppState item = do
+deleteAppState :: ∀ m. MonadAff m => ExceptT DeleteError m Unit
+deleteAppState = do
   container <- appStateContainer # withExceptT (Err <<< DBError <<< error)
-  deleteViaFind altCodec (\_ _ -> true) container item
-  where
-  altCodec = Codec.Record.object "AppState for DB lookup" 
-    { useCase: useCaseCodec
-    , shoppingState: shoppingCodec
-    , cookingState: Codec.Compat.maybe cookingStateCodec
-    } 
-
-  shoppingCodec = basicCodec (const $ pure InputRecipes) (const $ Json.jsonSingletonObject "inputRecipes" Json.jsonEmptyObject)
+  pointDelete container appStateID appStatePartitionKeyValue # withExceptT (Err <<< DBError)
