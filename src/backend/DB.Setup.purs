@@ -42,11 +42,11 @@ setupSchema = do
   void $ handleFFI $ runEffectFn3 createContainer db "ingredients" $ partitionKeyDef ingredientsPartitionKey
   log "Created ingredients container"
 
-  -- deleteContainer db "recipeIngredients" # handleFFI # try # void
+  deleteContainer db "recipeIngredients" # handleFFI # try # void
   void $ handleFFI $ runEffectFn3 createContainer db "recipeIngredients" $ partitionKeyDef recipeIngredientsPartitionKey
   log "Created recipeIngredients container"
 
-  -- deleteContainer db "recipeSteps" # handleFFI # try # void
+  deleteContainer db "recipeSteps" # handleFFI # try # void
   void $ handleFFI $ runEffectFn3 createContainer db "recipeSteps" $ partitionKeyDef recipeStepsPartitionKey
   log "Created recipeSteps container"
 
@@ -69,9 +69,9 @@ populateData = do
 
   where
   populateAppState = do
-    existingAppState <- DB.readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
+    existingAppState <- DB.readAppState (List.fromFoldable ingredients) # withExceptT printQueryError
     case existingAppState of
-      [] -> do
+      Nothing -> do
         DB.insertAppState (List.fromFoldable ingredients) { useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing }
         log "Populated appState"
       _ -> log "AppState already populated"

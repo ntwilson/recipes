@@ -28,6 +28,8 @@ import Backend.Prelude
 
 import Control.Promise (Promise, toAff)
 import Data.Array as Array
+import Data.Newtype (class Newtype)
+import Effect.Uncurried (EffectFn5, runEffectFn5)
 
 type ConnectConfig = 
   { endpoint :: String
@@ -120,6 +122,7 @@ insert codec (Container {raw}) item = do
   runEffectFn2 insertImpl raw (encode codec item) # effPromiseToAff # withExceptT message
 
 newtype ItemID = ItemID String
+derive instance Newtype ItemID _
 
 -- all records in a cosmos database come with an id field.
 getID :: Json -> ItemID
@@ -165,9 +168,11 @@ effPromiseToAff eff = do
   promise <- eff # try # liftEffect # ExceptT
   toAff promise # try # liftAff # ExceptT
 
-foreign import getItemImpl :: EffectFn3 RawContainer ItemID String (Promise Json)
+foreign import getItemImpl :: EffectFn5 (Json -> Maybe Json) (Maybe Json) RawContainer ItemID String (Promise (Maybe Json))
 
-getItem :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> ItemID -> String -> ExceptT QueryError m a
+getItem :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> ItemID -> String -> ExceptT QueryError m (Maybe a)
 getItem codec (Container {raw}) id key = do
-  json <- runEffectFn3 getItemImpl raw id key # effPromiseToAff # withExceptT DBError
-  decode codec json # lmap JsonError # except
+  maybeJson <- runEffectFn5 getItemImpl Just Nothing raw id key # effPromiseToAff # withExceptT DBError
+  case maybeJson of 
+    Nothing -> pure Nothing
+    Just json -> decode codec json # lmap JsonError # except <#> Just

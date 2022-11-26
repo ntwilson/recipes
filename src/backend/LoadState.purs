@@ -11,7 +11,7 @@ import Data.Set as Set
 import Recipes.API (RecipesValue)
 import Recipes.Backend.CosmosDB (printDeleteError, printQueryError)
 import Recipes.Backend.CosmosDB as Cosmos
-import Recipes.Backend.DB (readAllAppStates, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
+import Recipes.Backend.DB (readAppState, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeSteps)
 
@@ -32,17 +32,15 @@ allRecipeIngredients = do
 getState :: ExceptT String Aff AppState
 getState = do
   ingredients <- readAllIngredients # withExceptT printQueryError
-  appStateRecords <- readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
+  appStateRecord <- readAppState (List.fromFoldable ingredients) # withExceptT printQueryError
 
-  Array.head appStateRecords # note "No appState record found in the database" # except
+  appStateRecord # note "No appState record found in the database" # except
 
 setState :: AppState -> ExceptT String Aff Unit
 setState state = do
   ingredients <- readAllIngredients # withExceptT printQueryError
-  appStateRecords <- readAllAppStates (List.fromFoldable ingredients) # withExceptT printQueryError
 
-  oldState <- Array.head appStateRecords # note "No appState record found in the database" # except
-  DB.deleteAppState oldState # withExceptT (printDeleteError "appState")
+  DB.deleteAppState # withExceptT (printDeleteError "appState")
   DB.insertAppState (List.fromFoldable ingredients) state
 
 
