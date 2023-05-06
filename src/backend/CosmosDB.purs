@@ -1,6 +1,5 @@
 module Recipes.Backend.CosmosDB
-  ( Container
-  , CosmosClient
+  ( CosmosClient
   , Database
   , DeleteError(..)
   , ItemID(..)
@@ -8,6 +7,8 @@ module Recipes.Backend.CosmosDB
   , PartitionKeyDefinition
   , QueryError(..)
   , QueryParameter
+  , RawContainer
+  , class Container
   , deleteViaFind
   , getContainer
   , getItem
@@ -16,6 +17,7 @@ module Recipes.Backend.CosmosDB
   , newClient
   , newConnection
   , newPartitionKeyDef
+  , partitionKey
   , pointDelete
   , printDeleteError
   , printQueryError
@@ -28,24 +30,31 @@ import Backend.Prelude
 
 import Control.Promise (Promise, toAff)
 import Data.Array as Array
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, wrap)
 import Effect.Uncurried (EffectFn5, runEffectFn5)
 
-type ConnectConfig = 
-  { endpoint :: String
-  , key :: String
-  , databaseId :: String
-  }
+-- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` defined
+-- | Each `Container` must have exactly one `PartitionKey`, and this class ensures that you can't accidentally use 
+-- | multiple keys or the wrong key.
+class Newtype c RawContainer <= Container c a | c -> a where
+  partitionKey :: PartitionKey c a
 
-newtype PartitionKey a = PartitionKey { def :: PartitionKeyDefinition, accessor :: a -> String }
+newtype PartitionKey :: Type -> Type -> Type
+newtype PartitionKey container a = PartitionKey { def :: PartitionKeyDefinition, accessor :: a -> String }
 newtype PartitionKeyDefinition = PartitionKeyDefinition { paths :: Array String }
 -- partition keys must have just a single path
 -- https://docs.microsoft.com/en-us/javascript/api/@azure/cosmos/partitionkeydefinition?view=azure-node-latest
 newPartitionKeyDef :: String -> PartitionKeyDefinition
 newPartitionKeyDef path = PartitionKeyDefinition { paths: [path] }
 
-getPartitionKey :: ∀ a. PartitionKey a -> a -> String
+getPartitionKey :: ∀ c a. PartitionKey c a -> a -> String
 getPartitionKey (PartitionKey {accessor}) = accessor
+
+type ConnectConfig = 
+  { endpoint :: String
+  , key :: String
+  , databaseId :: String
+  }
 
 connectionConfig :: ∀ m. MonadEffect m => ExceptT String m ConnectConfig
 connectionConfig = do
@@ -84,16 +93,11 @@ foreign import cosmosClient :: ∀ r. EffectFn1 { endpoint :: String, key :: Str
 foreign import database :: EffectFn1 ConnectConfig Database
 foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 
-getContainer :: ∀ a m. MonadEffect m => String -> PartitionKey a -> ExceptT String m (Container a)
-getContainer containerName partitionKey = do
+getContainer :: ∀ c a m. Container c a => MonadEffect m => String -> ExceptT String m c
+getContainer containerName = do
   database <- newConnection
   raw <- runEffectFn2 getContainerImpl database containerName # catchEffect
-  pure $ Container { raw, partitionKey }
-
-newtype Container a = Container 
-  { raw :: RawContainer
-  , partitionKey :: PartitionKey a
-  }
+  pure $ wrap raw
 
 data QueryError = DBError Error | JsonError JsonDecodeError
 printQueryError :: QueryError -> String
@@ -102,13 +106,13 @@ printQueryError (JsonError err) = printJsonDecodeError err
 
 type QueryParameter = { name :: String, value :: Json }
 foreign import queryImpl :: EffectFn3 RawContainer String (Array QueryParameter) (Promise (Array Json))
-query :: ∀ a b m. MonadAff m => JsonCodec b -> Container a -> String -> Array QueryParameter -> ExceptT QueryError m (Array b)
-query codec (Container {raw}) query parameters = parseQueryResults codec $ runEffectFn3 queryImpl raw query parameters
+query :: ∀ c a b m. Container c a => MonadAff m => JsonCodec b -> c -> String -> Array QueryParameter -> ExceptT QueryError m (Array b)
+query codec container query parameters = parseQueryResults codec $ runEffectFn3 queryImpl (unwrap container) query parameters
 
 foreign import readAllImpl :: EffectFn1 RawContainer (Promise (Array Json))
 
-readAll :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> ExceptT QueryError m (Array a)
-readAll codec (Container {raw}) = parseQueryResults codec $ runEffectFn1 readAllImpl raw
+readAll :: ∀ c a m. Container c a => MonadAff m => JsonCodec a -> c -> ExceptT QueryError m (Array a)
+readAll codec container = parseQueryResults codec $ runEffectFn1 readAllImpl $ unwrap container
 
 parseQueryResults :: ∀ m a. MonadAff m => JsonCodec a -> Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
 parseQueryResults codec rawResult = do
@@ -117,9 +121,9 @@ parseQueryResults codec rawResult = do
 
 
 foreign import insertImpl :: EffectFn2 RawContainer Json (Promise Unit)
-insert :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> a -> ExceptT String m Unit
-insert codec (Container {raw}) item = do
-  runEffectFn2 insertImpl raw (encode codec item) # effPromiseToAff # withExceptT message
+insert :: ∀ c a m. Container c a => MonadAff m => JsonCodec a -> c -> a -> ExceptT String m Unit
+insert codec container item = do
+  runEffectFn2 insertImpl (unwrap container) (encode codec item) # effPromiseToAff # withExceptT message
 
 newtype ItemID = ItemID String
 derive instance Newtype ItemID _
@@ -130,20 +134,20 @@ getID json = (unsafeCoerce json).id
 
 foreign import deleteImpl :: EffectFn3 RawContainer ItemID String (Promise Unit) 
 
-pointDelete :: ∀ a m. MonadAff m => Container a -> ItemID -> String -> ExceptT Error m Unit
-pointDelete (Container {raw}) itemID key = 
-  runEffectFn3 deleteImpl raw itemID key # effPromiseToAff
+pointDelete :: ∀ c a m. Container c a => MonadAff m => c -> ItemID -> String -> ExceptT Error m Unit
+pointDelete container itemID key = 
+  runEffectFn3 deleteImpl (unwrap container) itemID key # effPromiseToAff
 
 data DeleteError = NoMatchFound | Err QueryError
 printDeleteError :: String -> DeleteError -> String 
 printDeleteError collectionName NoMatchFound = i"No matching "collectionName" record was found in the database to delete"
 printDeleteError _ (Err err) = printQueryError err
 
-deleteViaFind :: ∀ a m. MonadAff m => 
-  JsonCodec a -> (a -> a -> Boolean) -> Container a -> a -> ExceptT DeleteError m Unit
-deleteViaFind originalCodec equate (Container {raw, partitionKey: PartitionKey { accessor }}) item = do
+deleteViaFind :: ∀ c a m. Container c a => MonadAff m => 
+  JsonCodec a -> (a -> a -> Boolean) -> c -> a -> ExceptT DeleteError m Unit
+deleteViaFind originalCodec equate container item = do
 
-  items <- runEffectFn1 readAllImpl raw # parseQueryResults codec # withExceptT Err
+  items <- runEffectFn1 readAllImpl (unwrap container) # parseQueryResults codec # withExceptT Err
   target <- 
     items 
     # Array.find (\{decoded} -> equate item decoded)
@@ -152,9 +156,9 @@ deleteViaFind originalCodec equate (Container {raw, partitionKey: PartitionKey {
 
   let
     itemID = getID target.json
-    itemPartitionKey = accessor item
+    itemPartitionKey = getPartitionKey (partitionKey :: PartitionKey c a) item
 
-  runEffectFn3 deleteImpl raw itemID itemPartitionKey # effPromiseToAff # withExceptT (Err <<< DBError)
+  runEffectFn3 deleteImpl (unwrap container) itemID itemPartitionKey # effPromiseToAff # withExceptT (Err <<< DBError)
 
   where
   codec = basicCodec decoder encoder
@@ -170,9 +174,9 @@ effPromiseToAff eff = do
 
 foreign import getItemImpl :: EffectFn5 (Json -> Maybe Json) (Maybe Json) RawContainer ItemID String (Promise (Maybe Json))
 
-getItem :: ∀ a m. MonadAff m => JsonCodec a -> Container a -> ItemID -> String -> ExceptT QueryError m (Maybe a)
-getItem codec (Container {raw}) id key = do
-  maybeJson <- runEffectFn5 getItemImpl Just Nothing raw id key # effPromiseToAff # withExceptT DBError
+getItem :: ∀ c a m. Container c a => MonadAff m => JsonCodec a -> c -> ItemID -> String -> ExceptT QueryError m (Maybe a)
+getItem codec container id key = do
+  maybeJson <- runEffectFn5 getItemImpl Just Nothing (unwrap container) id key # effPromiseToAff # withExceptT DBError
   case maybeJson of 
     Nothing -> pure Nothing
     Just json -> decode codec json # lmap JsonError # except <#> Just
