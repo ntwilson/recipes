@@ -6,11 +6,12 @@ import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
 import Control.Promise (Promise, toAff)
 import Data.List as List
 import Effect.Exception (message)
-import Recipes.Backend.CosmosDB (Container, Database, PartitionKey(..), PartitionKeyDefinition, newConnection, printQueryError)
-import Recipes.Backend.DB (appStatePartitionKey, ingredientsPartitionKey, recipeIngredientsPartitionKey, recipeStepsPartitionKey, recipesPartitionKey)
+import Recipes.Backend.CosmosDB (class Container, ContainerName(..), Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, containerName, newConnection, partitionKey, printQueryError)
+import Recipes.Backend.DB (AppStateContainer, IngredientsContainer, RecipeContainer, RecipeIngredientsContainer, RecipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
+import Type.Proxy (Proxy(..))
 
 main :: Effect Unit
 main = launchAff_ do
@@ -19,10 +20,10 @@ main = launchAff_ do
     Left err -> log err
     Right _ -> pure unit
 
-foreign import createContainer :: ∀ a. EffectFn3 Database String PartitionKeyDefinition (Promise (Container a))
+foreign import createContainer :: EffectFn3 Database String PartitionKeyDefinition (Promise RawContainer)
 foreign import deleteContainer :: Database -> String -> Effect (Promise Unit)
 
-partitionKeyDef :: ∀ a. PartitionKey a -> PartitionKeyDefinition
+partitionKeyDef :: ∀ c a. PartitionKey c a -> PartitionKeyDefinition
 partitionKeyDef (PartitionKey { def }) = def
 
 setupDatabase :: ∀ m. MonadAff m => ExceptT String m Unit
@@ -34,26 +35,26 @@ setupSchema :: ∀ m. MonadAff m => ExceptT String m Unit
 setupSchema = do
 
   db <- newConnection
-  deleteContainer db "recipes" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "recipes" $ partitionKeyDef recipesPartitionKey
-  log "Created recipes container"
+  replaceContainer db (Proxy :: _ RecipeContainer)
+  replaceContainer db (Proxy :: _ IngredientsContainer)
+  replaceContainer db (Proxy :: _ RecipeIngredientsContainer)
+  replaceContainer db (Proxy :: _ RecipeStepsContainer)
 
-  deleteContainer db "ingredients" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "ingredients" $ partitionKeyDef ingredientsPartitionKey
-  log "Created ingredients container"
-
-  deleteContainer db "recipeIngredients" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "recipeIngredients" $ partitionKeyDef recipeIngredientsPartitionKey
-  log "Created recipeIngredients container"
-
-  deleteContainer db "recipeSteps" # handleFFI # try # void
-  void $ handleFFI $ runEffectFn3 createContainer db "recipeSteps" $ partitionKeyDef recipeStepsPartitionKey
-  log "Created recipeSteps container"
-
-  void $ handleFFI $ runEffectFn3 createContainer db "appState" $ partitionKeyDef appStatePartitionKey
+  let (ContainerName appState :: ContainerName AppStateContainer) = containerName
+  void $ handleFFI $ runEffectFn3 createContainer db appState $ partitionKeyDef (partitionKey :: PartitionKey AppStateContainer _)
   log "Created appState container"
 
   where
+  replaceContainer :: ∀ c a. Container c a => Database -> Proxy c -> ExceptT String m Unit
+  replaceContainer db _ = do
+    let 
+      (ContainerName name :: ContainerName c) = containerName
+      (key :: PartitionKey c a) = partitionKey
+    deleteContainer db name # handleFFI # try # void
+    void $ handleFFI $ runEffectFn3 createContainer db name $ partitionKeyDef key
+    log $ i"Created "name" container"
+
+
   handleFFI :: ∀ a. Effect (Promise a) -> ExceptT String m a
   handleFFI fn = do
     promise <- withExceptT message $ ExceptT $ liftEffect $ try fn
