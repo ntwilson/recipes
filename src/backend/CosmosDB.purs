@@ -35,9 +35,9 @@ import Data.Array as Array
 import Data.Newtype (class Newtype, wrap)
 import Effect.Uncurried (EffectFn5, runEffectFn5)
 
--- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` defined
--- | Each `Container` must have exactly one `PartitionKey`, and this class ensures that you can't accidentally use 
--- | multiple keys or the wrong key.
+-- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` and a `ContainerName` defined.
+-- | Each `Container` must have exactly one name and one partition key, and this class ensures that you can't accidentally use 
+-- | multiple or the wrong ones.
 class Newtype c RawContainer <= Container c a | c -> a where
   partitionKey :: PartitionKey c a
   containerName :: ContainerName c
