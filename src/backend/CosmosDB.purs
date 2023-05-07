@@ -1,5 +1,6 @@
 module Recipes.Backend.CosmosDB
-  ( CosmosClient
+  ( ContainerName(..)
+  , CosmosClient
   , Database
   , DeleteError(..)
   , ItemID(..)
@@ -9,6 +10,7 @@ module Recipes.Backend.CosmosDB
   , QueryParameter
   , RawContainer
   , class Container
+  , containerName
   , deleteViaFind
   , getContainer
   , getItem
@@ -38,6 +40,10 @@ import Effect.Uncurried (EffectFn5, runEffectFn5)
 -- | multiple keys or the wrong key.
 class Newtype c RawContainer <= Container c a | c -> a where
   partitionKey :: PartitionKey c a
+  containerName :: ContainerName c
+
+newtype ContainerName :: Type -> Type
+newtype ContainerName c = ContainerName String
 
 newtype PartitionKey :: Type -> Type -> Type
 newtype PartitionKey container a = PartitionKey { def :: PartitionKeyDefinition, accessor :: a -> String }
@@ -93,10 +99,11 @@ foreign import cosmosClient :: ∀ r. EffectFn1 { endpoint :: String, key :: Str
 foreign import database :: EffectFn1 ConnectConfig Database
 foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 
-getContainer :: ∀ c a m. Container c a => MonadEffect m => String -> ExceptT String m c
-getContainer containerName = do
+getContainer :: ∀ c a m. Container c a => MonadEffect m => ExceptT String m c
+getContainer = do
+  let (ContainerName name :: ContainerName c) = containerName
   database <- newConnection
-  raw <- runEffectFn2 getContainerImpl database containerName # catchEffect
+  raw <- runEffectFn2 getContainerImpl database name # catchEffect
   pure $ wrap raw
 
 data QueryError = DBError Error | JsonError JsonDecodeError
