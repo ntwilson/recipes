@@ -39,7 +39,7 @@ import Data.Codec.Argonaut.Compat as Codec.Compat
 import Data.Codec.Argonaut.Record as Codec.Record
 import Data.List (List)
 import Data.Newtype (class Newtype)
-import Recipes.Backend.CosmosDB (class Container, ContainerName(..), DeleteError(..), ItemID(..), PartitionKey(..), QueryError(..), RawContainer, deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
+import Recipes.Backend.CosmosDB (class Container, DeleteError(..), ItemID(..), PartitionKey(..), QueryError(..), RawContainer, deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
 import Recipes.DataStructures (AppState, Ingredient, RecipeSteps, RecipeIngredients, appStateCodecFields)
 import Record as Record
 import Type.Proxy (Proxy(..))
@@ -63,7 +63,7 @@ newtype RecipeContainer = RecipeContainer RawContainer
 derive instance Newtype RecipeContainer _
 instance Container RecipeContainer {name :: String} where 
   partitionKey = recipesPartitionKey
-  containerName = ContainerName "recipes"
+  containerName _ = "recipes"
 recipesContainer :: ∀ m. MonadEffect m => ExceptT String m RecipeContainer
 recipesContainer = getContainer
   
@@ -97,7 +97,7 @@ newtype IngredientsContainer = IngredientsContainer RawContainer
 derive instance Newtype IngredientsContainer _
 instance Container IngredientsContainer Ingredient where 
   partitionKey = ingredientsPartitionKey
-  containerName = ContainerName "ingredients"
+  containerName _ = "ingredients"
 ingredientsContainer :: ∀ m. MonadEffect m => ExceptT String m IngredientsContainer
 ingredientsContainer = getContainer
 readAllIngredients :: ∀ m. ReadAll m Ingredient
@@ -120,7 +120,7 @@ newtype RecipeIngredientsContainer = RecipeIngredientsContainer RawContainer
 derive instance Newtype RecipeIngredientsContainer _
 instance Container RecipeIngredientsContainer RecipeIngredients where 
   partitionKey = recipeIngredientsPartitionKey
-  containerName = ContainerName "recipeIngredients"
+  containerName _ = "recipeIngredients"
 recipeIngredientsContainer :: ∀ m. MonadEffect m => ExceptT String m RecipeIngredientsContainer
 recipeIngredientsContainer = getContainer
 
@@ -146,7 +146,7 @@ newtype RecipeStepsContainer = RecipeStepsContainer RawContainer
 derive instance Newtype RecipeStepsContainer _
 instance Container RecipeStepsContainer RecipeSteps where 
   partitionKey = recipeStepsPartitionKey
-  containerName = ContainerName "recipeSteps"
+  containerName _ = "recipeSteps"
 recipeStepsContainer :: ∀ m. MonadEffect m => ExceptT String m RecipeStepsContainer
 recipeStepsContainer = getContainer
 
@@ -173,7 +173,7 @@ newtype AppStateContainer = AppStateContainer RawContainer
 derive instance Newtype AppStateContainer _
 instance Container AppStateContainer AppState where 
   partitionKey = appStatePartitionKey
-  containerName = ContainerName "appState"
+  containerName _ = "appState"
 appStateContainer :: ∀ m. MonadEffect m => ExceptT String m AppStateContainer
 appStateContainer = getContainer
 appStateDBCodec :: _ -> _

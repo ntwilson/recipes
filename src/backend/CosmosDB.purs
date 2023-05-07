@@ -1,6 +1,5 @@
 module Recipes.Backend.CosmosDB
-  ( ContainerName(..)
-  , CosmosClient
+  ( CosmosClient
   , Database
   , DeleteError(..)
   , ItemID(..)
@@ -34,16 +33,14 @@ import Control.Promise (Promise, toAff)
 import Data.Array as Array
 import Data.Newtype (class Newtype, wrap)
 import Effect.Uncurried (EffectFn5, runEffectFn5)
+import Type.Proxy (Proxy(..))
 
--- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` and a `ContainerName` defined.
+-- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` and a name defined.
 -- | Each `Container` must have exactly one name and one partition key, and this class ensures that you can't accidentally use 
 -- | multiple or the wrong ones.
 class Newtype c RawContainer <= Container c a | c -> a where
   partitionKey :: PartitionKey c a
-  containerName :: ContainerName c
-
-newtype ContainerName :: Type -> Type
-newtype ContainerName c = ContainerName String
+  containerName :: Proxy c -> String
 
 newtype PartitionKey :: Type -> Type -> Type
 newtype PartitionKey container a = PartitionKey { def :: PartitionKeyDefinition, accessor :: a -> String }
@@ -101,9 +98,8 @@ foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 
 getContainer :: ∀ c a m. Container c a => MonadEffect m => ExceptT String m c
 getContainer = do
-  let (ContainerName name :: ContainerName c) = containerName
   database <- newConnection
-  raw <- runEffectFn2 getContainerImpl database name # catchEffect
+  raw <- runEffectFn2 getContainerImpl database (containerName (Proxy :: _ c)) # catchEffect
   pure $ wrap raw
 
 data QueryError = DBError Error | JsonError JsonDecodeError

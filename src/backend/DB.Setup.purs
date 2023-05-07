@@ -6,7 +6,7 @@ import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
 import Control.Promise (Promise, toAff)
 import Data.List as List
 import Effect.Exception (message)
-import Recipes.Backend.CosmosDB (class Container, ContainerName(..), Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, containerName, newConnection, partitionKey, printQueryError)
+import Recipes.Backend.CosmosDB (class Container, Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, containerName, newConnection, partitionKey, printQueryError)
 import Recipes.Backend.DB (AppStateContainer, IngredientsContainer, RecipeContainer, RecipeIngredientsContainer, RecipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
@@ -40,18 +40,16 @@ setupSchema = do
   replaceContainer db (Proxy :: _ RecipeIngredientsContainer)
   replaceContainer db (Proxy :: _ RecipeStepsContainer)
 
-  let (ContainerName appState :: ContainerName AppStateContainer) = containerName
-  void $ handleFFI $ runEffectFn3 createContainer db appState $ partitionKeyDef (partitionKey :: PartitionKey AppStateContainer _)
+  void $ handleFFI $ runEffectFn3 createContainer db (containerName (Proxy :: _ AppStateContainer)) 
+    $ partitionKeyDef (partitionKey :: PartitionKey AppStateContainer _)
   log "Created appState container"
 
   where
   replaceContainer :: ∀ c a. Container c a => Database -> Proxy c -> ExceptT String m Unit
-  replaceContainer db _ = do
-    let 
-      (ContainerName name :: ContainerName c) = containerName
-      (key :: PartitionKey c a) = partitionKey
+  replaceContainer db proxy = do
+    let name = containerName proxy
     deleteContainer db name # handleFFI # try # void
-    void $ handleFFI $ runEffectFn3 createContainer db name $ partitionKeyDef key
+    void $ handleFFI $ runEffectFn3 createContainer db name $ partitionKeyDef (partitionKey :: PartitionKey c _)
     log $ i"Created "name" container"
 
 
