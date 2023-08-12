@@ -54,7 +54,7 @@ recipesPartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor: _.
 getRecipeID :: {name::String} -> ItemID
 getRecipeID {name} = ItemID name
 recipeCodec :: JsonCodec {name::String}
-recipeCodec = basicCodec decoder encoder
+recipeCodec = codec' decoder encoder
   where
   codec = Codec.Record.object "Recipe" {id: Codec.string}
   encoder {name} = encode codec {id: name}
@@ -86,7 +86,7 @@ ingredientsPartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor
 getIngredientID :: Ingredient -> ItemID
 getIngredientID {name} = ItemID name
 ingredientCodec :: JsonCodec Ingredient
-ingredientCodec = basicCodec decoder encoder
+ingredientCodec = codec' decoder encoder
   where
   codec = Codec.Record.object "Ingredient" 
     { id: Codec.string, store: Codec.string, section: Codec.Compat.maybe Codec.string, common: Codec.boolean }
@@ -177,7 +177,7 @@ instance Container AppStateContainer AppState where
 appStateContainer :: ∀ m. MonadEffect m => ExceptT String m AppStateContainer
 appStateContainer = getContainer
 appStateDBCodec :: _ -> _
-appStateDBCodec ingredients = basicCodec decoder encoder
+appStateDBCodec ingredients = codec' decoder encoder
   where
   itemIDCodec :: JsonCodec ItemID
   itemIDCodec = unsafeCoerce Codec.string

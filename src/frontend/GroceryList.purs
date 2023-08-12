@@ -8,7 +8,7 @@ import Data.HTTP.Method (Method(..))
 import Data.List as List
 import Data.List.NonEmpty as NEList
 import Data.List.Types (List, NonEmptyList)
-import Option as Option
+import React.SyntheticEvent (SyntheticMouseEvent)
 import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue, setItemStatusCodec)
 import Recipes.API as Routing
 import Recipes.DataStructures (ingredientCodec)
@@ -51,7 +51,7 @@ data AddItemAction = EnterState AddItemState | Finish AddItemState
 addItemForm :: Widget HTML AddItemValue
 addItemForm = do
   _ <- MUI.floatingActionButton 
-    ( Option.fromRecord { onClick: \_ -> unit, classes: {root: "add-item-fab"} }) 
+    ( MUI.fabProps @Unit { onClick: \(_::SyntheticMouseEvent) -> unit, classes: {root: "add-item-fab"} }) 
     [MUI.addIcon]
 
   liftEffect scrollToBottom
@@ -78,7 +78,7 @@ addItemForm = do
     textField :: { label :: String, value :: String, onChange :: String -> AddItemAction, autoFocus :: Boolean } -> Widget HTML AddItemAction
     textField {label, value, onChange, autoFocus} =
       MUI.textField 
-        ( Option.fromRecord 
+        ( MUI.textFieldProps
           { label, value, onChange, size: TextSmall, classes: { root: "text-with-margin" }, autoFocus }
         ) 
         []

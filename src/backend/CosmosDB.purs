@@ -164,7 +164,7 @@ deleteViaFind originalCodec equate container item = do
   runEffectFn3 deleteImpl (unwrap container) itemID itemPartitionKey # effPromiseToAff # withExceptT (Err <<< DBError)
 
   where
-  codec = basicCodec decoder encoder
+  codec = codec' decoder encoder
   decoder json = do
     decoded <- decode originalCodec json
     pure {json, decoded}

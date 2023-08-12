@@ -36,7 +36,6 @@ You can edit this file as you like.
   , "node-fs-aff"
   , "node-http"
   , "node-process"
-  , "option"
   , "ordered-collections"
   , "prelude"
   , "react"
@@ -50,6 +49,7 @@ You can edit this file as you like.
   , "tuples"
   , "typelevel-prelude"
   , "unsafe-coerce"
+  , "untagged-union"
   , "web-html"
   ]
 , packages = ./packages.dhall
