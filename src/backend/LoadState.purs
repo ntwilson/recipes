@@ -3,6 +3,7 @@ module Recipes.Backend.LoadState where
 import Backend.Prelude
 
 import Control.Alternative (guard)
+import Control.Monad.Except (runExceptT)
 import Data.Array as Array
 import Data.Codec.Argonaut as Codec
 import Data.List (List)
@@ -11,9 +12,9 @@ import Data.Set as Set
 import Recipes.API (RecipesValue)
 import Recipes.Backend.CosmosDB (printDeleteError, printQueryError)
 import Recipes.Backend.CosmosDB as Cosmos
-import Recipes.Backend.DB (readAppState, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
+import Recipes.Backend.DB (readAllIngredients, readAllRecipeIngredients, readAllRecipes, readAppState, recipeStepsCodec, recipeStepsContainer)
 import Recipes.Backend.DB as DB
-import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeSteps)
+import Recipes.DataStructures (AppState, CookingState, RecipeIngredients, RecipeSteps, Ingredient)
 
 
 allRecipes :: ExceptT String Aff RecipesValue
@@ -44,6 +45,24 @@ setState state = do
   DB.insertAppState (List.fromFoldable ingredients) state
 
 
+addIngredient :: Ingredient -> ExceptT String Aff Unit
+addIngredient = DB.insertIngredient
+
+insertRecipeIfNotExists :: {name :: String} -> ExceptT String Aff Unit
+insertRecipeIfNotExists recipe@{name} = do
+  existingRecipes <- allRecipes
+  when (not Array.elem name existingRecipes) $ DB.insertRecipe recipe
+
+addShopRecipe :: {name :: String} -> List RecipeIngredients -> ExceptT String Aff Unit
+addShopRecipe recipe ingredients = do
+  insertRecipeIfNotExists recipe
+  traverse_ DB.insertRecipeIngredients ingredients
+
+upsertRecipeStep :: RecipeSteps -> ExceptT String Aff Unit
+upsertRecipeStep step@{recipeName} = do
+  insertRecipeIfNotExists {name: recipeName}
+  DB.deleteRecipeSteps step # runExceptT # void # lift
+  DB.insertRecipeSteps step
 
 getSteps :: String -> ExceptT String Aff CookingState
 getSteps recipeName = do

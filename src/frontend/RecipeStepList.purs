@@ -10,6 +10,7 @@ import Recipes.API (SetRecipeStepStatusValue)
 import Recipes.API as Routing
 import Recipes.DataStructures (CookingState, RecipeStep, recipeStepCodec)
 import Recipes.Frontend.Http (expectRequest)
+import Recipes.Frontend.MUI (floatingActionButton)
 import Recipes.Frontend.MUI as MUI
 import Web.HTML (window)
 import Web.HTML.Location (reload)
@@ -24,6 +25,8 @@ recipeStepList state@{recipe, steps} = do
     (fold (recipeStepListItem <$> steps) <#> CheckStep)
     <|> 
     button [Props.onClick $> ResetRecipe, Props.style {marginTop: "1em"}] [text "Finished cooking"]
+    <|> 
+    floatingActionButton (Option.fromRecord { }) []
 
 
   case action of 
@@ -53,3 +56,4 @@ recipeStepListItem step = do
     ]
 
   pure $ step { completed = not step.completed }
+

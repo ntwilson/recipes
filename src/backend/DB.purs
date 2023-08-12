@@ -161,7 +161,7 @@ deleteRecipeSteps item = do
   container <- recipeStepsContainer # withExceptT (Err <<< DBError <<< error)
   deleteViaFind recipeStepsCodec equate container item
   where 
-  equate = equating _.recipeName && equating _.stepNumber -- b.recipeName == a.recipeName && b.stepNumber == a.stepNumber
+  equate = equating _.recipeName && equating _.stepNumber
 
 appStatePartitionKeyValue :: String
 appStatePartitionKeyValue = "singleton"
