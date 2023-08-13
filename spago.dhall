@@ -41,6 +41,7 @@ You can edit this file as you like.
   , "react"
   , "record"
   , "routing-duplex"
+  , "run"
   , "simple-json"
   , "spec"
   , "spec-discovery"

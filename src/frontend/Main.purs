@@ -15,7 +15,7 @@ import Recipes.API (RecipesValue)
 import Recipes.API as Routing
 import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..), appStateCodec, ingredientCodec, useCaseCodec)
 import Recipes.Frontend.GroceryList (groceryList)
-import Recipes.Frontend.Http (expectRequest)
+import Recipes.Frontend.Http (expectRequest, expectRequest', runRequest)
 import Recipes.Frontend.PantryList (pantryList)
 import Recipes.Frontend.RecipeList (recipeList)
 import Recipes.Frontend.RecipeSelection (recipeSelection)
@@ -24,52 +24,47 @@ import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
-loadRecipes :: Aff RecipesValue
+loadRecipes :: ∀ r. Run (AFFECT + EXCEPT String + r) RecipesValue
 loadRecipes = do
-  resp <- request $ defaultRequest { url = Routing.print Routing.Recipes, responseFormat = ResponseFormat.json }
-  {body} <- resp # liftErrorVia printError 
-  decode (Codec.array Codec.string) body # liftErrorVia printJsonDecodeError 
+  {body} <- runRequest $ defaultRequest { url = Routing.print Routing.Recipes, responseFormat = ResponseFormat.json }
+  decode (Codec.array Codec.string) body # lmap printJsonDecodeError # rethrow
 
-
-submitRecipes :: List String -> Aff Unit
+submitRecipes :: ∀ r. List String -> Run (AFFECT + EXCEPT String + r) Unit
 submitRecipes recipes = 
-  expectRequest $ defaultRequest 
+  expectRequest' $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SubmitRecipes
     , content = Just $ RequestBody.Json $ encode (Codec.list Codec.string) recipes
     }
 
-loadRecipesWithSteps :: Aff RecipesValue 
+loadRecipesWithSteps :: ∀ r. Run (AFFECT + EXCEPT String + r) RecipesValue 
 loadRecipesWithSteps = do
-  resp <- request $ defaultRequest { url = Routing.print Routing.RecipesWithSteps, responseFormat = ResponseFormat.json }
-  {body} <- resp # liftErrorVia printError 
-  decode (Codec.array Codec.string) body # liftErrorVia printJsonDecodeError 
+  {body} <- runRequest $ defaultRequest { url = Routing.print Routing.RecipesWithSteps, responseFormat = ResponseFormat.json }
+  decode (Codec.array Codec.string) body # lmap printJsonDecodeError # rethrow
 
-selectRecipe :: String -> Aff Unit
+selectRecipe :: ∀ r. String -> Run (AFFECT + EXCEPT String + r) Unit
 selectRecipe recipe = 
-  expectRequest $ defaultRequest 
+  expectRequest' $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SelectRecipe
     , content = Just $ RequestBody.String recipe
     }
 
-loadIngredients :: Aff $ List Ingredient
+loadIngredients :: ∀ r. Run (AFFECT + EXCEPT String + r) $ List Ingredient
 loadIngredients = do
-  resp <- request $ defaultRequest { url = Routing.print Routing.Ingredients, responseFormat = ResponseFormat.json }
-  {body} <- resp # liftErrorVia printError 
-  decode (Codec.list ingredientCodec) body # liftErrorVia printJsonDecodeError 
+  {body} <- runRequest $ defaultRequest { url = Routing.print Routing.Ingredients, responseFormat = ResponseFormat.json }
+  decode (Codec.list ingredientCodec) body # lmap printJsonDecodeError # rethrow
 
-loadState :: Aff AppState 
+loadState :: ∀ r. Run (AFFECT + EXCEPT String + r) AppState 
 loadState = do
-  resp <- request $ defaultRequest { url = Routing.print Routing.CurrentState, responseFormat = ResponseFormat.json }
-  {body} <- resp # liftErrorVia printError 
+  {body} <- runRequest $ defaultRequest { url = Routing.print Routing.CurrentState, responseFormat = ResponseFormat.json }
   ingredients <- loadIngredients
-  Codec.decode (appStateCodec ingredients) body # liftErrorVia Codec.printJsonDecodeError
+  Codec.decode (appStateCodec ingredients) body # lmap Codec.printJsonDecodeError # rethrow
 
 inputRecipes :: Widget HTML Unit 
 inputRecipes = do 
-  recipes <- (text "Loading..." <|> liftAff loadRecipes)
+  recipes <- (text "Loading..." <|> runToWidget loadRecipes)
   let recipeListItems = recipes <#> \name -> {name, checked: false}
   selected <- recipeList recipeListItems Nil
-  liftAff $ submitRecipes selected
+  runToWidget $ submitRecipes selected
   liftEffect (window >>= location >>= reload)
 
 useCaseBar :: CurrentUseCase -> Widget HTML Unit
@@ -90,7 +85,7 @@ useCaseBar currentUseCase = do
 
 content :: Widget HTML Unit
 content = do
-  appState <- (text "Loading..." <|> liftAff loadState)
+  appState <- (text "Loading..." <|> runToWidget loadState)
   ( useCaseBar appState.useCase 
     <|>
     div [Props.style { marginLeft: "1em" }] 
@@ -104,9 +99,9 @@ content = do
             )
 
         {useCase: Cooking, cookingState: Nothing} -> do
-          recipes <- (text "Loading..." <|> liftAff loadRecipesWithSteps)
+          recipes <- (text "Loading..." <|> runToWidget loadRecipesWithSteps)
           selectedRecipe <- recipeSelection $ List.fromFoldable recipes
-          liftAff $ selectRecipe selectedRecipe
+          runToWidget $ selectRecipe selectedRecipe
           liftEffect (window >>= location >>= reload)
 
         {useCase: Cooking, cookingState: Just cookingState} -> recipeStepList cookingState

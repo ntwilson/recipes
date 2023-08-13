@@ -1,11 +1,9 @@
 module Recipes.Backend.CosmosDB
   ( CosmosClient
   , Database
-  , DeleteError(..)
   , ItemID(..)
   , PartitionKey(..)
   , PartitionKeyDefinition
-  , QueryError(..)
   , QueryParameter
   , RawContainer
   , class Container
@@ -20,10 +18,19 @@ module Recipes.Backend.CosmosDB
   , newPartitionKeyDef
   , partitionKey
   , pointDelete
+  , printDBError
   , printDeleteError
   , printQueryError
   , query
   , readAll
+  , JSON_DECODE_ERROR
+  , _jsonDecodeError
+  , DBERROR
+  , _dbError
+  , QUERY_ERROR
+  , NO_MATCH_ERROR
+  , _noMatchError
+  , DELETE_ERROR
   )
   where
 
@@ -33,6 +40,7 @@ import Control.Promise (Promise, toAff)
 import Data.Array as Array
 import Data.Newtype (class Newtype, wrap)
 import Effect.Uncurried (EffectFn5, runEffectFn5)
+import Run.Except (_except, fromJustAt)
 import Type.Proxy (Proxy(..))
 
 -- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` and a name defined.
@@ -59,7 +67,7 @@ type ConnectConfig =
   , databaseId :: String
   }
 
-connectionConfig :: ∀ m. MonadEffect m => ExceptT String m ConnectConfig
+connectionConfig :: ∀ r. Run (EFFECT + EXCEPT String + r) ConnectConfig
 connectionConfig = do
   key <- env "COSMOS_KEY"
   databaseId <- env "COSMOS_DB"
@@ -71,20 +79,21 @@ connectionConfig = do
     }
 
   where 
+  env :: String -> Run (EFFECT + EXCEPT String + r) String
   env keyname = 
-    lift (liftEffect $ lookupEnv keyname) >>= case _ of
-      Nothing -> throwError $ i"No "keyname" environment variable found"
+    liftEffect (lookupEnv keyname) >>= case _ of
+      Nothing -> throw $ i"No "keyname" environment variable found"
       Just key -> pure key
 
-catchEffect :: ∀ m a. MonadEffect m => Effect a -> ExceptT String m a
-catchEffect = try >>> liftEffect >>> ExceptT >>> withExceptT message
+catchEffect :: ∀ r a. Effect a -> Run (EFFECT + EXCEPT String + r) a
+catchEffect eff = try eff <#> lmap message # liftEffect >>= rethrow
 
-newClient :: ∀ m. MonadEffect m => ExceptT String m CosmosClient
+newClient :: ∀ r. Run (EFFECT + EXCEPT String + r) CosmosClient
 newClient = do
   config <- connectionConfig
   runEffectFn1 cosmosClient config # catchEffect
 
-newConnection :: ∀ m. MonadEffect m => ExceptT String m Database
+newConnection :: ∀ r. Run (EFFECT + EXCEPT String + r) Database
 newConnection = do
   config <- connectionConfig
   runEffectFn1 database config # catchEffect
@@ -96,37 +105,51 @@ foreign import cosmosClient :: ∀ r. EffectFn1 { endpoint :: String, key :: Str
 foreign import database :: EffectFn1 ConnectConfig Database
 foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 
-getContainer :: ∀ c a m. Container c a => MonadEffect m => ExceptT String m c
+getContainer :: ∀ c a r. Container c a => Run (EFFECT + EXCEPT String + r) c
 getContainer = do
-  database <- newConnection
-  raw <- runEffectFn2 getContainerImpl database (containerName (Proxy :: _ c)) # catchEffect
+  db <- newConnection
+  raw <- runEffectFn2 getContainerImpl db (containerName (Proxy :: _ c)) # catchEffect
   pure $ wrap raw
 
-data QueryError = DBError Error | JsonError JsonDecodeError
-printQueryError :: QueryError -> String
-printQueryError (DBError err) = message err
-printQueryError (JsonError err) = printJsonDecodeError err
+type DBERROR :: ∀ k. Row (k -> Type) -> Row (k -> Type)
+type DBERROR r = (dbError :: Except Error | r)
+_dbError :: Proxy "dbError"
+_dbError = Proxy
+
+printDBError :: ∀ r a. Run (DBERROR + EXCEPT String + r) a -> Run (EXCEPT String + r) a
+printDBError = withExceptAt _dbError _except message
+
+type JSON_DECODE_ERROR :: ∀ k. Row (k -> Type) -> Row (k -> Type)
+type JSON_DECODE_ERROR r = (jsonDecodeError :: Except JsonDecodeError | r)
+_jsonDecodeError :: Proxy "jsonDecodeError"
+_jsonDecodeError = Proxy
+
+type QUERY_ERROR :: ∀ k. Row (k -> Type) -> Row (k -> Type)
+type QUERY_ERROR r = DBERROR + JSON_DECODE_ERROR + r
+
+printQueryError :: ∀ r a. Run (QUERY_ERROR + EXCEPT String + r) a -> Run (EXCEPT String + r) a
+printQueryError = printDBError <<< withExceptAt _jsonDecodeError _except printJsonDecodeError
 
 type QueryParameter = { name :: String, value :: Json }
 foreign import queryImpl :: EffectFn3 RawContainer String (Array QueryParameter) (Promise (Array Json))
-query :: ∀ c a b m. Container c a => MonadAff m => JsonCodec b -> c -> String -> Array QueryParameter -> ExceptT QueryError m (Array b)
+query :: ∀ c a b r. Container c a => JsonCodec b -> c -> String -> Array QueryParameter -> Run (AFFECT + QUERY_ERROR + r) (Array b)
 query codec container query parameters = parseQueryResults codec $ runEffectFn3 queryImpl (unwrap container) query parameters
 
 foreign import readAllImpl :: EffectFn1 RawContainer (Promise (Array Json))
 
-readAll :: ∀ c a m. Container c a => MonadAff m => JsonCodec a -> c -> ExceptT QueryError m (Array a)
+readAll :: ∀ c a r. Container c a => JsonCodec a -> c -> Run (AFFECT + QUERY_ERROR + r) (Array a)
 readAll codec container = parseQueryResults codec $ runEffectFn1 readAllImpl $ unwrap container
 
-parseQueryResults :: ∀ m a. MonadAff m => JsonCodec a -> Effect (Promise (Array Json)) -> ExceptT QueryError m (Array a)
+parseQueryResults :: ∀ r a. JsonCodec a -> Effect (Promise (Array Json)) -> Run(AFFECT + QUERY_ERROR + r) (Array a)
 parseQueryResults codec rawResult = do
-  results <- effPromiseToAff rawResult # withExceptT DBError
-  traverse (decode codec >>> lmap JsonError) results # except
-
+  results <- effPromiseToAff rawResult # moveExcept _except _dbError
+  traverse (decode codec) results # rethrowAt _jsonDecodeError
 
 foreign import insertImpl :: EffectFn2 RawContainer Json (Promise Unit)
-insert :: ∀ c a m. Container c a => MonadAff m => JsonCodec a -> c -> a -> ExceptT String m Unit
+insert :: ∀ c a r. 
+  Container c a => JsonCodec a -> c -> a -> Run (AFFECT + EXCEPT String + r) Unit
 insert codec container item = do
-  runEffectFn2 insertImpl (unwrap container) (encode codec item) # effPromiseToAff # withExceptT message
+  runEffectFn2 insertImpl (unwrap container) (encode codec item) # effPromiseToAff # withExcept message
 
 newtype ItemID = ItemID String
 derive instance Newtype ItemID _
@@ -137,31 +160,39 @@ getID json = (unsafeCoerce json).id
 
 foreign import deleteImpl :: EffectFn3 RawContainer ItemID String (Promise Unit) 
 
-pointDelete :: ∀ c a m. Container c a => MonadAff m => c -> ItemID -> String -> ExceptT Error m Unit
+pointDelete :: ∀ c a r. Container c a => c -> ItemID -> String -> Run (AFFECT + EXCEPT Error + r) Unit
 pointDelete container itemID key = 
   runEffectFn3 deleteImpl (unwrap container) itemID key # effPromiseToAff
 
-data DeleteError = NoMatchFound | Err QueryError
-printDeleteError :: String -> DeleteError -> String 
-printDeleteError collectionName NoMatchFound = i"No matching "collectionName" record was found in the database to delete"
-printDeleteError _ (Err err) = printQueryError err
 
-deleteViaFind :: ∀ c a m. Container c a => MonadAff m => 
-  JsonCodec a -> (a -> a -> Boolean) -> c -> a -> ExceptT DeleteError m Unit
+type NO_MATCH_ERROR :: ∀ k. Row (k -> Type) -> Row (k -> Type)
+type NO_MATCH_ERROR r = (noMatchError :: Except Unit | r)
+_noMatchError :: Proxy "noMatchError"
+_noMatchError = Proxy
+
+printNoMatchError :: ∀ r a. String -> Run (NO_MATCH_ERROR + EXCEPT String + r) a -> Run (EXCEPT String + r) a
+printNoMatchError collectionName = withExceptAt _noMatchError _except (const (i"No matching "collectionName" record was found in the database to delete"))
+
+type DELETE_ERROR :: ∀ k. Row (k -> Type) -> Row (k -> Type)
+type DELETE_ERROR r = QUERY_ERROR + NO_MATCH_ERROR + r
+printDeleteError :: ∀ r a. String -> Run (DELETE_ERROR + EXCEPT String + r) a -> Run (EXCEPT String + r) a
+printDeleteError collectionName = printQueryError <<< printNoMatchError collectionName
+
+deleteViaFind :: ∀ c a r. Container c a =>
+  JsonCodec a -> (a -> a -> Boolean) -> c -> a -> Run (AFFECT + DELETE_ERROR + r) Unit
 deleteViaFind originalCodec equate container item = do
 
-  items <- runEffectFn1 readAllImpl (unwrap container) # parseQueryResults codec # withExceptT Err
+  items <- runEffectFn1 readAllImpl (unwrap container) # parseQueryResults codec
   target <- 
     items 
     # Array.find (\{decoded} -> equate item decoded)
-    # note NoMatchFound
-    # except
+    # fromJustAt _noMatchError
 
   let
     itemID = getID target.json
     itemPartitionKey = getPartitionKey (partitionKey :: PartitionKey c a) item
 
-  runEffectFn3 deleteImpl (unwrap container) itemID itemPartitionKey # effPromiseToAff # withExceptT (Err <<< DBError)
+  runEffectFn3 deleteImpl (unwrap container) itemID itemPartitionKey # effPromiseToAff # moveExcept _except _dbError
 
   where
   codec = codec' decoder encoder
@@ -170,16 +201,17 @@ deleteViaFind originalCodec equate container item = do
     pure {json, decoded}
   encoder {json} = json
 
-effPromiseToAff :: ∀ m a. MonadAff m => Effect (Promise a) -> ExceptT Error m a
+effPromiseToAff :: ∀ r a. Effect (Promise a) -> Run (AFFECT + EXCEPT Error + r) a
 effPromiseToAff eff = do
-  promise <- eff # try # liftEffect # ExceptT
-  toAff promise # try # liftAff # ExceptT
+  promise <- eff # try # liftEffect >>= rethrow 
+  toAff promise # try # liftAff >>= rethrow
 
 foreign import getItemImpl :: EffectFn5 (Json -> Maybe Json) (Maybe Json) RawContainer ItemID String (Promise (Maybe Json))
 
-getItem :: ∀ c a m. Container c a => MonadAff m => JsonCodec a -> c -> ItemID -> String -> ExceptT QueryError m (Maybe a)
+getItem :: ∀ c a r. Container c a => JsonCodec a -> c -> ItemID -> String -> Run (AFFECT + QUERY_ERROR + r) (Maybe a)
 getItem codec container id key = do
-  maybeJson <- runEffectFn5 getItemImpl Just Nothing (unwrap container) id key # effPromiseToAff # withExceptT DBError
+  maybeJson <- runEffectFn5 getItemImpl Just Nothing (unwrap container) id key # effPromiseToAff # moveExcept _except _dbError
+
   case maybeJson of 
     Nothing -> pure Nothing
-    Just json -> decode codec json # lmap JsonError # except <#> Just
+    Just json -> decode codec json # rethrowAt _jsonDecodeError <#> Just

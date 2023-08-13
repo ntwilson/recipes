@@ -5,7 +5,7 @@ import Backend.Prelude
 import HTTPure (Request, ResponseM)
 import HTTPure as HTTPure
 import Node.HTTP (ListenOptions)
-import Recipes.Backend.Routing (router)
+import Recipes.Backend.Routing as Routing
 import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 
 main :: Effect Unit
@@ -17,7 +17,7 @@ main = launchAff_ do
     startupSuffix = caseMaybe {nothing: "", just: \m -> i" in "m" mode"} mode 
     startupMsg :: String
     startupMsg = i "starting server: "config.opts.hostname":"config.opts.port"/"startupSuffix
-  serve config.opts (logMiddleware (router config.dist)) $ log startupMsg
+  serve config.opts (logMiddleware (Routing.run config.dist)) $ log startupMsg
   pure unit
 
   where 

@@ -16,36 +16,36 @@ import Recipes.Backend.DB as DB
 import Recipes.DataStructures (AppState, CookingState, Ingredient, RecipeIngredients, RecipeSteps)
 
 
-allRecipes :: ExceptT String Aff RecipesValue
+allRecipes :: Run (AFFECT + EXCEPT String ()) RecipesValue
 allRecipes = do 
-  recipeNames <- readAllRecipes # withExceptT printQueryError
+  recipeNames <- readAllRecipes # printQueryError
   pure (recipeNames <#> _.name)
 
-allIngredients :: ExceptT String Aff $ List Ingredient
+allIngredients :: Run (AFFECT + EXCEPT String ()) (List Ingredient)
 allIngredients = do
-  readAllIngredients # withExceptT printQueryError <#> List.fromFoldable
+  readAllIngredients # printQueryError <#> List.fromFoldable
 
-allRecipeIngredients :: ExceptT String Aff $ List RecipeIngredients 
+allRecipeIngredients :: Run (AFFECT + EXCEPT String ()) (List RecipeIngredients) 
 allRecipeIngredients = do
-  readAllRecipeIngredients # withExceptT printQueryError <#> List.fromFoldable
+  readAllRecipeIngredients # printQueryError <#> List.fromFoldable
 
-getState :: ExceptT String Aff AppState
+getState :: Run (AFFECT + EXCEPT String ()) AppState
 getState = do
-  ingredients <- readAllIngredients # withExceptT printQueryError
-  appStateRecord <- readAppState (List.fromFoldable ingredients) # withExceptT printQueryError
+  ingredients <- readAllIngredients # printQueryError
+  appStateRecord <- readAppState (List.fromFoldable ingredients) # printQueryError
 
-  appStateRecord # note "No appState record found in the database" # except
+  appStateRecord # note "No appState record found in the database" # rethrow
 
-setState :: AppState -> ExceptT String Aff Unit
+setState :: AppState -> Run (AFFECT + EXCEPT String ()) Unit
 setState state = do
-  ingredients <- readAllIngredients # withExceptT printQueryError
+  ingredients <- readAllIngredients # printQueryError
 
-  DB.deleteAppState # withExceptT (printDeleteError "appState")
+  DB.deleteAppState # printDeleteError "appState"
   DB.insertAppState (List.fromFoldable ingredients) state
 
 
 
-getSteps :: String -> ExceptT String Aff CookingState
+getSteps :: String -> Run (AFFECT + EXCEPT String ()) CookingState
 getSteps recipeName = do
   stepsCol <- recipeStepsContainer
 
@@ -53,9 +53,9 @@ getSteps recipeName = do
     Cosmos.query recipeStepsCodec stepsCol 
       "SELECT * FROM recipeSteps WHERE recipeSteps.recipeName = @recipeName ORDER BY recipeSteps.stepNumber ASC" 
       [{ name: "@recipeName", value: encode Codec.string recipeName }]
-    # withExceptT printQueryError
+    # printQueryError
 
-  guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # except
+  guard (not $ Array.null steps) # note (i"No recipe steps associated with the recipe '"recipeName"'" :: String) # rethrow
 
   let 
     cookingStateSteps = steps <#> \(step :: RecipeSteps) ->
@@ -63,7 +63,8 @@ getSteps recipeName = do
 
   pure { recipe: recipeName, steps: List.fromFoldable cookingStateSteps }
 
-getRecipesWithSteps :: ExceptT String Aff $ Array String 
+getRecipesWithSteps :: Run (AFFECT + EXCEPT String ()) (Array String) 
 getRecipesWithSteps = do
-  recipes <- DB.readAllRecipeSteps # withExceptT printQueryError
+  recipes <- DB.readAllRecipeSteps # printQueryError
   pure $ Array.fromFoldable (Set.fromFoldable (recipes <#> _.recipeName))
+

@@ -32,7 +32,7 @@ pantryList items = do
       liftEffect (window >>= location >>= reload)
 
     AnotherItem item -> do
-      liftEffect $ checkItem item
+      liftAff $ checkItem item
       let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == item.item.ingredient.name then item else oldItem
       pantryList updatedItems
 
@@ -40,7 +40,7 @@ pantryList items = do
   where 
     commonItems = items # List.filter (_.item.ingredient.common)
 
-    checkItem item = launchAff_ $ expectRequest $ defaultRequest 
+    checkItem item = expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print SetItemStatus
       , content = Just $ RequestBody.Json $ encode setItemStatusCodec item
       }
