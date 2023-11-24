@@ -42,7 +42,7 @@ storeList itemsByStore =
     bySection :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
     bySection = 
       List.sortBy (comparing _.item.ingredient.section)
-      >>> List.groupBy (equating _.item.ingredient.section)
+      >>> List.groupBy (eq `on` _.item.ingredient.section)
 
 foreign import scrollToBottom :: Effect Unit
 
@@ -101,7 +101,7 @@ groceryItems items = do
     byStore :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
     byStore = 
       List.sortBy (comparing _.item.ingredient.store)
-      >>> List.groupBy (equating _.item.ingredient.store)
+      >>> List.groupBy (eq `on` _.item.ingredient.store)
 
     checkItem item = launchAff_ $ expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print SetItemStatus

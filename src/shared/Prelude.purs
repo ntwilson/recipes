@@ -1,14 +1,16 @@
-module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, mapCompose, revMapCompose, (<$$>), (<##>), (<$<), (>#>), equating, caseMaybe, withExcept, withExceptAt, moveExcept, AFFECT) where
+module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, mapCompose, revMapCompose, (<$$>), (<##>), (<$<), (>#>), caseMaybe, withExcept, withExceptAt, moveExcept, AFFECT) where
 
 import Prelude
 
 import Control.Monad.Error.Class (catchError, throwError, try) as Exports
+import Control.Monad.Except.Checked (ExceptV, safe, handleError, handleErrors) as Exports
 import Control.Monad.Trans.Class (lift) as Exports
 import Data.Argonaut.Core (Json) as Exports
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap) as Exports
 import Data.Codec (codec') as Exports
 import Data.Codec.Argonaut (JsonCodec, JsonDecodeError(..), printJsonDecodeError, decode, encode) as Exports
 import Data.Either (Either(..), choose, either, fromLeft, fromRight, hush, isLeft, isRight, note, note') as Exports
+import Data.Function (on) as Exports
 import Data.Function.Uncurried (Fn1, Fn2, Fn3, runFn1, runFn2, runFn3) as Exports
 import Data.Interpolate (i) as Exports
 import Data.Maybe (Maybe(..), fromJust, fromMaybe, fromMaybe', isJust, isNothing, optional) as Exports
@@ -48,9 +50,6 @@ mapCompose f g = map f <<< g
 
 revMapCompose :: ∀ f a b c. Functor f => (a -> f b) -> (b -> c) -> a -> f c
 revMapCompose = flip mapCompose
-
-equating :: ∀ a b. Eq b => (a -> b) -> a -> a -> Boolean
-equating projection a b = projection a == projection b
 
 caseMaybe :: ∀ a b. { just :: a -> b, nothing :: b } -> Exports.Maybe a -> b
 caseMaybe { just, nothing } = maybe nothing just

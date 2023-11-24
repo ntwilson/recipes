@@ -1,4 +1,4 @@
-module Frontend.Prelude (module Exports, runToWidget, handleErrors) where
+module Frontend.Prelude (module Exports, runToWidget) where
 
 import Prelude
 
@@ -18,7 +18,4 @@ import Type.Row (type (+))
 
 runToWidget :: ∀ r a. Monoid r => Run (Exports.AFFECT (EXCEPT String ())) a -> Exports.Widget r a
 runToWidget = liftAff <<< runBaseAff' <<< catch (liftAff <<< throwError <<< error)
-
-handleErrors :: ∀ e a r. Aff (Either e a) -> Run (Exports.AFFECT + EXCEPT e + r) a
-handleErrors = liftAff >=> rethrow 
 

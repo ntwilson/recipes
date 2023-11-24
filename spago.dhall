@@ -11,6 +11,7 @@ You can edit this file as you like.
   , "argonaut-core"
   , "arrays"
   , "bifunctors"
+  , "checked-exceptions"
   , "codec"
   , "codec-argonaut"
   , "concur-core"

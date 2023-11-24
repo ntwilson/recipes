@@ -122,7 +122,7 @@ router dist rqst body = rtr rqst.method $ Routing.parse recipeRouteDuplex $ rout
       correctItem :: List AddItemValue -> List AddItemValue -> AddItemValue -> AddItemValue 
       correctItem existingItems existingCustom newCustom = newCustom { store = correctedStore, section = correctedSection }
         where 
-          correctedStore = case List.find (\{store: existingStore} -> equating CaseInsensitiveString existingStore newCustom.store) allExisting of
+          correctedStore = case List.find (\{store: existingStore} -> (eq `on` CaseInsensitiveString) existingStore newCustom.store) allExisting of
             Just existingItem -> existingItem.store
             Nothing -> newCustom.store
 
@@ -134,7 +134,7 @@ router dist rqst body = rtr rqst.method $ Routing.parse recipeRouteDuplex $ rout
 
           sameSection _custSection {section: Nothing} = Nothing
           sameSection custSection {section: Just existingSection} 
-            | equating CaseInsensitiveString existingSection custSection = Just existingSection
+            | (eq `on` CaseInsensitiveString) existingSection custSection = Just existingSection
             | otherwise = Nothing
 
           allExisting = existingItems <> existingCustom
