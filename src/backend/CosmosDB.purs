@@ -26,13 +26,11 @@ module Recipes.Backend.CosmosDB
   , JSON_DECODE_ERROR
   , jsonDecodeError
   , DBERROR
-  , stringError
   , dbError
   , QUERY_ERROR
   , NO_MATCH_ERROR
   , noMatchError
   , DELETE_ERROR
-  , STRING_ERROR
   )
   where
 
@@ -69,14 +67,6 @@ type ConnectConfig =
   , key :: String
   , databaseId :: String
   }
-
-type STRING_ERROR r = (stringError :: String | r)
-stringError :: ∀ r. String -> Variant (STRING_ERROR + r)
-stringError = inj (Proxy :: _ "stringError")
-
-type ERROR r = (error :: Error | r)
-err :: ∀ r. Error -> Variant (ERROR + r)
-err = inj (Proxy :: _ "error")
 
 connectionConfig :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m ConnectConfig
 connectionConfig = do

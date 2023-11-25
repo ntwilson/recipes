@@ -13,7 +13,7 @@ import HTTPure as HTTPure
 import HTTPure.Body as Body
 import Node.Encoding (Encoding(..))
 import Recipes.API (AddItemValue, RecipeRoute(..), recipeRouteDuplex, routeStr, setItemStatusCodec)
-import Recipes.Backend.CosmosDB (DELETE_ERROR, STRING_ERROR, printDeleteError, printQueryError)
+import Recipes.Backend.CosmosDB (DELETE_ERROR, printDeleteError, printQueryError)
 import Recipes.Backend.LoadState (allIngredients, allRecipeIngredients, allRecipes, getRecipesWithSteps, getState, getSteps, setState)
 import Recipes.Backend.RecipesToIngredients (recipesToIngredients)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..), appStateCodec, ingredientCodec, recipeStepCodec, useCaseCodec)

@@ -14,7 +14,6 @@ import Data.List (List(..))
 import Data.List as List
 import Recipes.API (RecipesValue)
 import Recipes.API as Routing
-import Recipes.Backend.CosmosDB (STRING_ERROR, stringError)
 import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..), appStateCodec, ingredientCodec, useCaseCodec)
 import Recipes.Frontend.GroceryList (groceryList)
 import Recipes.Frontend.Http (expectRequest, expectRequest', runRequest)

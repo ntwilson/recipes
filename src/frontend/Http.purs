@@ -6,7 +6,6 @@ import Affjax (Request, Response)
 import Control.Monad.Except (ExceptT(..))
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.Map (Map, values)
-import Recipes.Backend.CosmosDB (STRING_ERROR, stringError)
 
 class BodyType a where bodyStr :: Response a -> String
 instance BodyType String where bodyStr resp = resp.body

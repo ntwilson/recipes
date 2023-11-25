@@ -7,7 +7,7 @@ import Control.Promise (Promise, toAff)
 import Data.List as List
 import Data.Newtype (wrap)
 import Effect.Exception (message)
-import Recipes.Backend.CosmosDB (class Container, Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, STRING_ERROR, containerName, newConnection, partitionKey, printQueryError, stringError)
+import Recipes.Backend.CosmosDB (class Container, Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, containerName, newConnection, partitionKey, printQueryError)
 import Recipes.Backend.DB (AppStateContainer, IngredientsContainer, RecipeContainer, RecipeIngredientsContainer, RecipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)

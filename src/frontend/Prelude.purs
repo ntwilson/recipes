@@ -11,10 +11,9 @@ import Control.Monad.Error.Class (throwError)
 import Effect.Aff (error)
 import Effect.Aff.Class (liftAff)
 import Effect.Class.Console (log)
-import Recipes.Backend.CosmosDB (STRING_ERROR)
 import Shared.Prelude hiding (div) as Exports
 import Control.Monad.Except.Checked (handleErrors)
 
-exceptToWidget :: ∀ r a. Monoid r => Exports.ExceptV (STRING_ERROR ()) (Exports.Widget r) a -> Exports.Widget r a
+exceptToWidget :: ∀ r a. Monoid r => Exports.ExceptV (Exports.STRING_ERROR ()) (Exports.Widget r) a -> Exports.Widget r a
 exceptToWidget = handleErrors { stringError: \err -> log err *> liftAff (throwError (error err)) }
 

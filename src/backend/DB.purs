@@ -39,7 +39,7 @@ import Data.Codec.Argonaut.Compat as Codec.Compat
 import Data.Codec.Argonaut.Record as Codec.Record
 import Data.List (List)
 import Data.Newtype (class Newtype)
-import Recipes.Backend.CosmosDB (class Container, DELETE_ERROR, ItemID(..), PartitionKey(..), QUERY_ERROR, RawContainer, STRING_ERROR, dbError, deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
+import Recipes.Backend.CosmosDB (class Container, DELETE_ERROR, ItemID(..), PartitionKey(..), QUERY_ERROR, RawContainer, dbError, deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
 import Recipes.DataStructures (AppState, Ingredient, RecipeSteps, RecipeIngredients, appStateCodecFields)
 import Record as Record
 import Type.Proxy (Proxy(..))

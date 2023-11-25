@@ -10,7 +10,7 @@ import Data.List (List)
 import Data.List as List
 import Data.Set as Set
 import Recipes.API (RecipesValue)
-import Recipes.Backend.CosmosDB (DELETE_ERROR, QUERY_ERROR, STRING_ERROR, stringError)
+import Recipes.Backend.CosmosDB (DELETE_ERROR, QUERY_ERROR)
 import Recipes.Backend.CosmosDB as Cosmos
 import Recipes.Backend.DB (readAppState, readAllIngredients, readAllRecipeIngredients, readAllRecipes, recipeStepsCodec, recipeStepsContainer)
 import Recipes.Backend.DB as DB
