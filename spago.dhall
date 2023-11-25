@@ -52,6 +52,7 @@ You can edit this file as you like.
   , "typelevel-prelude"
   , "unsafe-coerce"
   , "untagged-union"
+  , "variant"
   , "web-html"
   ]
 , packages = ./packages.dhall

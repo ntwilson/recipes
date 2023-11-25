@@ -2,10 +2,12 @@ module Recipes.Backend.DB.Setup where
 
 import Backend.Prelude
 
+import Control.Monad.Except (runExceptT)
 import Control.Promise (Promise, toAff)
 import Data.List as List
+import Data.Newtype (wrap)
 import Effect.Exception (message)
-import Recipes.Backend.CosmosDB (class Container, Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, containerName, newConnection, partitionKey, printQueryError)
+import Recipes.Backend.CosmosDB (class Container, Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, STRING_ERROR, containerName, newConnection, partitionKey, printQueryError, stringError)
 import Recipes.Backend.DB (AppStateContainer, IngredientsContainer, RecipeContainer, RecipeIngredientsContainer, RecipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
@@ -16,8 +18,7 @@ main :: Effect Unit
 main = launchAff_ do
   loadEnv
   setupDatabase 
-    # catch log 
-    # runBaseAff'
+    # handleErrors { stringError: log }
 
 foreign import createContainer :: EffectFn3 Database String PartitionKeyDefinition (Promise RawContainer)
 foreign import deleteContainer :: Database -> String -> Effect (Promise Unit)
@@ -25,12 +26,12 @@ foreign import deleteContainer :: Database -> String -> Effect (Promise Unit)
 partitionKeyDef :: ∀ c a. PartitionKey c a -> PartitionKeyDefinition
 partitionKeyDef (PartitionKey { def }) = def
 
-setupDatabase :: ∀ r. Run (AFFECT + EXCEPT String + r) Unit
+setupDatabase :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 setupDatabase = do
   setupSchema
   populateData
 
-setupSchema :: ∀ r. Run (AFFECT + EXCEPT String + r) Unit
+setupSchema :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 setupSchema = do
 
   db <- newConnection
@@ -45,19 +46,23 @@ setupSchema = do
 
   where
   
-  replaceContainer :: ∀ c a. Container c a => Database -> Proxy c -> Run (AFFECT + EXCEPT String + r) Unit
+  replaceContainer :: ∀ c a. Container c a => Database -> Proxy c -> ExceptV (STRING_ERROR + r) m Unit
   replaceContainer db proxy = do
     let name = containerName proxy
-    deleteContainer db name # handleFFI # runExcept # void
+    deleteContainer db name # handleFFI # ignoreError
     void $ handleFFI $ runEffectFn3 createContainer db name $ partitionKeyDef (partitionKey :: PartitionKey c _)
     log $ i"Created "name" container"
 
-  handleFFI :: ∀ r' a. Effect (Promise a) -> Run (AFFECT + EXCEPT String + r') a
-  handleFFI fn = do
-    promise <- try fn # liftEffect >>= rethrow # withExcept message
-    toAff promise # try # liftAff >>= rethrow # withExcept message
 
-populateData :: ∀ r. Run (AFFECT + EXCEPT String + r) Unit
+  handleFFI :: ∀ r' a m'. MonadAff m' => Effect (Promise a) -> ExceptV (STRING_ERROR + r') m' a
+  handleFFI fn = do
+    promise <- try fn # liftEffect <#> lmap (message >>> stringError) # wrap
+    toAff promise # try # liftAff <#> lmap (message >>> stringError) # wrap
+
+ignoreError :: ∀ m e. Functor m => ExceptV e m Unit -> m Unit
+ignoreError = runExceptT >>> void
+
+populateData :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 populateData = do
   populateRecipes
   populateIngredients
@@ -74,7 +79,7 @@ populateData = do
         log "Populated appState"
       _ -> log "AppState already populated"
 
-  populateRecipes :: Run (AFFECT + EXCEPT String + r) Unit
+  populateRecipes :: ExceptV (STRING_ERROR + r) m Unit
   populateRecipes = do
     traverse_ DB.insertRecipe recipes
     log "Populated recipes"
@@ -94,7 +99,7 @@ populateData = do
     , {name: "The Staples"}
     ]
 
-  populateIngredients :: Run (AFFECT + EXCEPT String + r) Unit
+  populateIngredients :: ExceptV (STRING_ERROR + r) m Unit
   populateIngredients = do
     traverse_ DB.insertIngredient ingredients
     log "Populated ingredients"
@@ -188,7 +193,7 @@ populateData = do
     , {name: "White wine vinegar", store: "Harris Teeter", section: Nothing, common: true}
     ]
 
-  populateRecipeIngredients :: Run (AFFECT + EXCEPT String + r) Unit
+  populateRecipeIngredients :: ExceptV (STRING_ERROR + r) m Unit
   populateRecipeIngredients = do
     traverse_ DB.insertRecipeIngredients recipeIngredients
     log "Populated recipeIngredients"
@@ -347,7 +352,7 @@ populateData = do
     , {recipe: "The Staples", ingredient: "Cream cheese", quantity: 2.0, units: Just "bricks"}
     ]
 
-  populateRecipeSteps :: Run (AFFECT + EXCEPT String + r) Unit
+  populateRecipeSteps :: ExceptV (STRING_ERROR + r) m Unit
   populateRecipeSteps = do
     traverse_ DB.insertRecipeSteps recipeSteps
     log "Populated recipeSteps"

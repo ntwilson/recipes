@@ -26,6 +26,7 @@ module Recipes.Backend.CosmosDB
   , JSON_DECODE_ERROR
   , jsonDecodeError
   , DBERROR
+  , stringError
   , dbError
   , QUERY_ERROR
   , NO_MATCH_ERROR
@@ -174,16 +175,16 @@ pointDelete container itemID key =
   runEffectFn3 deleteImpl (unwrap container) itemID key # effPromiseToAff
 
 
-type NO_MATCH_ERROR r = (noMatchError :: Unit | r)
-noMatchError :: ∀ r. Variant (NO_MATCH_ERROR r)
-noMatchError = inj (Proxy :: _ "noMatchError") unit
+type NO_MATCH_ERROR r = (noMatchError :: String | r)
+noMatchError :: ∀ r. String -> Variant (NO_MATCH_ERROR r)
+noMatchError collectionName = inj (Proxy :: _ "noMatchError") collectionName
 
-printNoMatchError :: ∀ r a m. Monad m => String -> ExceptV (NO_MATCH_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
-printNoMatchError collectionName = handleError { noMatchError: \_ -> throwError $ stringError $ i"No matching "collectionName" record was found in the database to delete" }
+printNoMatchError :: ∀ r a m. Monad m => ExceptV (NO_MATCH_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
+printNoMatchError = handleError { noMatchError: \collectionName -> throwError $ stringError $ i"No matching "collectionName" record was found in the database to delete" }
 
 type DELETE_ERROR r = QUERY_ERROR + NO_MATCH_ERROR + r
-printDeleteError :: ∀ r a m. Monad m => String -> ExceptV (DELETE_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
-printDeleteError collectionName = printQueryError <<< printNoMatchError collectionName
+printDeleteError :: ∀ r a m. Monad m => ExceptV (DELETE_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
+printDeleteError = printQueryError <<< printNoMatchError
 
 deleteViaFind :: ∀ c r a m. Container c a => MonadAff m =>
   JsonCodec a -> (a -> a -> Boolean) -> c -> a -> ExceptV (DELETE_ERROR + r) m Unit
@@ -193,7 +194,7 @@ deleteViaFind originalCodec equate container item = do
   target <- 
     items 
     # Array.find (\{decoded} -> equate item decoded)
-    # note noMatchError
+    # note (noMatchError $ containerName $ Proxy @c)
     # except
 
   let
