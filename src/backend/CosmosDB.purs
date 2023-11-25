@@ -49,7 +49,7 @@ import Type.Proxy (Proxy(..))
 -- | multiple or the wrong ones.
 class Newtype c RawContainer <= Container c a | c -> a where
   partitionKey :: PartitionKey c a
-  containerName :: Proxy c -> String
+  containerName :: String
 
 newtype PartitionKey :: Type -> Type -> Type
 newtype PartitionKey container a = PartitionKey { def :: PartitionKeyDefinition, accessor :: a -> String }
@@ -109,7 +109,7 @@ foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 getContainer :: ∀ c a r m. Container c a => MonadEffect m => ExceptV (STRING_ERROR + r) m c
 getContainer = do
   db <- newConnection
-  raw <- runEffectFn2 getContainerImpl db (containerName (Proxy :: _ c)) # catchEffect
+  raw <- runEffectFn2 getContainerImpl db (containerName @c) # catchEffect
   pure $ wrap raw
 
 type DBERROR r = (dbError :: Error | r)
@@ -165,12 +165,12 @@ pointDelete container itemID key =
   runEffectFn3 deleteImpl (unwrap container) itemID key # effPromiseToAff
 
 
-type NO_MATCH_ERROR r = (noMatchError :: String | r)
+type NO_MATCH_ERROR r = (noMatchError :: {collectionName :: String} | r)
 noMatchError :: ∀ r. String -> Variant (NO_MATCH_ERROR r)
-noMatchError collectionName = inj (Proxy :: _ "noMatchError") collectionName
+noMatchError collectionName = inj (Proxy :: _ "noMatchError") {collectionName}
 
 printNoMatchError :: ∀ r a m. Monad m => ExceptV (NO_MATCH_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
-printNoMatchError = handleError { noMatchError: \collectionName -> throwError $ stringError $ i"No matching "collectionName" record was found in the database to delete" }
+printNoMatchError = handleError { noMatchError: \{collectionName} -> throwError $ stringError $ i"No matching "collectionName" record was found in the database to delete" }
 
 type DELETE_ERROR r = QUERY_ERROR + NO_MATCH_ERROR + r
 printDeleteError :: ∀ r a m. Monad m => ExceptV (DELETE_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
@@ -184,7 +184,7 @@ deleteViaFind originalCodec equate container item = do
   target <- 
     items 
     # Array.find (\{decoded} -> equate item decoded)
-    # note (noMatchError $ containerName $ Proxy @c)
+    # note (noMatchError $ containerName @c)
     # except
 
   let

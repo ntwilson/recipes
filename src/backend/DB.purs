@@ -63,7 +63,7 @@ newtype RecipeContainer = RecipeContainer RawContainer
 derive instance Newtype RecipeContainer _
 instance Container RecipeContainer {name :: String} where
   partitionKey = recipesPartitionKey
-  containerName _ = "recipes"
+  containerName = "recipes"
 recipesContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m RecipeContainer
 recipesContainer = getContainer
   
@@ -97,7 +97,7 @@ newtype IngredientsContainer = IngredientsContainer RawContainer
 derive instance Newtype IngredientsContainer _
 instance Container IngredientsContainer Ingredient where 
   partitionKey = ingredientsPartitionKey
-  containerName _ = "ingredients"
+  containerName = "ingredients"
 ingredientsContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m IngredientsContainer
 ingredientsContainer = getContainer
 readAllIngredients :: ∀ r m. MonadAff m => ReadAll m r Ingredient
@@ -120,7 +120,7 @@ newtype RecipeIngredientsContainer = RecipeIngredientsContainer RawContainer
 derive instance Newtype RecipeIngredientsContainer _
 instance Container RecipeIngredientsContainer RecipeIngredients where 
   partitionKey = recipeIngredientsPartitionKey
-  containerName _ = "recipeIngredients"
+  containerName = "recipeIngredients"
 recipeIngredientsContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m RecipeIngredientsContainer
 recipeIngredientsContainer = getContainer
 
@@ -147,7 +147,7 @@ newtype RecipeStepsContainer = RecipeStepsContainer RawContainer
 derive instance Newtype RecipeStepsContainer _
 instance Container RecipeStepsContainer RecipeSteps where 
   partitionKey = recipeStepsPartitionKey
-  containerName _ = "recipeSteps"
+  containerName = "recipeSteps"
 recipeStepsContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m RecipeStepsContainer
 recipeStepsContainer = getContainer
 
@@ -174,7 +174,7 @@ newtype AppStateContainer = AppStateContainer RawContainer
 derive instance Newtype AppStateContainer _
 instance Container AppStateContainer AppState where 
   partitionKey = appStatePartitionKey
-  containerName _ = "appState"
+  containerName = "appState"
 appStateContainer :: ∀ m r. MonadEffect m => ExceptV (STRING_ERROR + r) m AppStateContainer
 appStateContainer = getContainer
 appStateDBCodec :: _ -> _
