@@ -21,7 +21,8 @@ import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..), appStateCo
 run :: String -> HTTPure.Request RecipeRoute -> HTTPure.ResponseM
 run dist rqst = 
   handleErrors {stringError: handler} do
-    router dist rqst
+    body <- HTTPure.toString rqst.body
+    router dist rqst body
 
   where
   handler err = do
@@ -29,25 +30,24 @@ run dist rqst =
     HTTPure.internalServerError err
 
 
-router :: ∀ m. MonadAff m => String -> HTTPure.Request RecipeRoute -> ExceptV (STRING_ERROR ()) m HTTPure.Response
-router dist rqst = do
-  body <- HTTPure.toString rqst.body
-  rtr rqst.method rqst.route body
+router :: ∀ m. MonadAff m => String -> HTTPure.Request RecipeRoute -> String -> ExceptV (STRING_ERROR ()) m HTTPure.Response
+router dist rqst body = do
+  rtr rqst.method rqst.route
   where
-  rtr :: _ -> _ -> _ -> ExceptV (STRING_ERROR ()) m _
-  rtr Get Home _ = serveHtml (i dist"/index.html")
-  rtr Get CSS _ = serveCss (i dist"/index.css")
-  rtr Get JS _ = serveJavascript (i dist"/main.js")
+  rtr :: _ -> _ -> ExceptV (STRING_ERROR ()) m _
+  rtr Get Home = serveHtml (i dist"/index.html")
+  rtr Get CSS = serveCss (i dist"/index.css")
+  rtr Get JS = serveJavascript (i dist"/main.js")
 
-  rtr Get Recipes _ = printQueryError do
+  rtr Get Recipes = printQueryError do
     contents <- encode (Codec.array Codec.string) <$> allRecipes
     HTTPure.ok $ Json.stringify contents
 
-  rtr Get Ingredients _ = printQueryError do
+  rtr Get Ingredients = printQueryError do
     contents <- encode (Codec.list ingredientCodec) <$> allIngredients
     HTTPure.ok $ Json.stringify contents
 
-  rtr Post SubmitRecipes body = printDeleteError go 
+  rtr Post SubmitRecipes = printDeleteError go 
     where 
       go :: ExceptV (DELETE_ERROR + STRING_ERROR ()) m _
       go
@@ -62,17 +62,17 @@ router dist rqst = do
         
         | otherwise = HTTPure.badRequest "Could not parse request body"
 
-  rtr Get CurrentState _ = printQueryError do
+  rtr Get CurrentState = printQueryError do
     state <- getState
     ingredients <- allIngredients
     HTTPure.ok $ Json.stringify $ encode (appStateCodec ingredients) state
 
-  rtr Get ResetState _ = printDeleteError do
+  rtr Get ResetState = printDeleteError do
     state <- getState
     setState $ state { useCase = Shopping, shoppingState = InputRecipes }
     HTTPure.noContent
 
-  rtr Get SubmitPantry _ = printDeleteError do
+  rtr Get SubmitPantry = printDeleteError do
     state <- getState
     case state of 
       {useCase: Shopping, shoppingState: CheckKitchen items} -> do
@@ -80,7 +80,7 @@ router dist rqst = do
         HTTPure.noContent
       _ -> HTTPure.conflict "No items can or will exist until recipes are input."
 
-  rtr Post SetItemStatus body = printDeleteError go
+  rtr Post SetItemStatus = printDeleteError go
     where
       go 
         | Right json <- Json.jsonParser body
@@ -103,7 +103,7 @@ router dist rqst = do
         | checked = List.filter (_.ingredient.name >>> (/=) submittedItem.ingredient.name) items
         | otherwise = submittedItem : items
 
-  rtr Post AddItem body = printDeleteError go 
+  rtr Post AddItem = printDeleteError go 
     where 
       go 
         | Right json <- Json.jsonParser body 
@@ -141,12 +141,12 @@ router dist rqst = do
 
           allExisting = existingItems <> existingCustom
 
-  rtr Get ResetRecipe _ = printDeleteError do
+  rtr Get ResetRecipe = printDeleteError do
     state <- getState
     setState $ state { cookingState = Nothing }
     HTTPure.noContent
 
-  rtr Post SetRecipeStatus body = printDeleteError go
+  rtr Post SetRecipeStatus = printDeleteError go
     where 
       go 
         | Right json <- Json.jsonParser body 
@@ -166,17 +166,17 @@ router dist rqst = do
       replaceStep newStep steps = 
         steps <#> \step -> if step.ordinal == newStep.ordinal then newStep else step
 
-  rtr Get RecipesWithSteps _ = printQueryError do
+  rtr Get RecipesWithSteps = printQueryError do
     recipes <- getRecipesWithSteps 
     HTTPure.ok $ Json.stringify $ encode (Codec.array Codec.string) recipes
 
-  rtr Post SelectRecipe body = printDeleteError do
+  rtr Post SelectRecipe = printDeleteError do
     state <- getState
     steps <- getSteps body
     setState $ state { useCase = Cooking, cookingState = Just steps }
     HTTPure.noContent
 
-  rtr Post SetUseCase body = printDeleteError go
+  rtr Post SetUseCase = printDeleteError go
     where 
       go
         | Right json <- Json.jsonParser body 
@@ -187,7 +187,7 @@ router dist rqst = do
         
         | otherwise = HTTPure.badRequest (i"Could not parse request body: "body :: String)
 
-  rtr _ _ _ = HTTPure.notFound
+  rtr _ _ = HTTPure.notFound
 
 
 serveHtml :: ∀ m. MonadAff m => String -> m HTTPure.Response

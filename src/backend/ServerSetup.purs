@@ -15,14 +15,17 @@ logMiddleware handler req = do
   log $ i "["(show req.method)"] /"(intercalate "/" req.path)
   handler req
 
-serverOptions :: ∀ eff. MonadEffect eff => eff {opts::{hostname::String, port::Int, onStarted::Effect Unit}, dist::String}
-serverOptions = do
+serverOptions :: ∀ eff. MonadEffect eff => Maybe String -> eff {opts::{hostname::String, port::Int, onStarted::Effect Unit}, dist::String}
+serverOptions mode = do
   portStr <- env "PORT"
   hostEnv <- env "HOST"
   let 
     hostname = fromMaybe "0.0.0.0" hostEnv
     port = fromMaybe 80 (Int.fromString =<< portStr)
-    opts = {hostname, port, onStarted: pure unit}
+    startupSuffix = caseMaybe {nothing: "", just: \m -> i" in "m" mode"} mode 
+    startupMsg :: String
+    startupMsg = i "starting server: "hostname":"port"/"startupSuffix
+    opts = {hostname, port, onStarted: log startupMsg}
 
   pure {opts, dist: "./dist"}
   

@@ -11,14 +11,9 @@ import Recipes.Backend.ServerSetup (loadEnv, logMiddleware, serverOptions)
 main :: Effect Unit
 main = launchAff_ do
   loadEnv
-  config <- serverOptions
   mode <- env "MODE"
-  let 
-    startupSuffix = caseMaybe {nothing: "", just: \m -> i" in "m" mode"} mode 
-    startupMsg :: String
-    startupMsg = i "starting server: "config.opts.hostname":"config.opts.port"/"startupSuffix
-    options = config.opts { onStarted = log startupMsg }
-  serve options (logMiddleware (Routing.run config.dist))
+  config <- serverOptions mode
+  serve config.opts (logMiddleware (Routing.run config.dist))
   pure unit
 
   where 
