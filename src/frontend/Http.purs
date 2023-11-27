@@ -3,20 +3,26 @@ module Recipes.Frontend.Http where
 import Frontend.Prelude
 
 import Affjax (Request, Response)
-import Data.Map (Map, values)
+import Control.Monad.Except (ExceptT(..))
 import Data.FunctorWithIndex (mapWithIndex)
+import Data.Map (Map, values)
 
 class BodyType a where bodyStr :: Response a -> String
 instance BodyType String where bodyStr resp = resp.body
 else instance BodyType a where bodyStr _ = ""
 
+
+runRequest :: ∀ m a r. MonadAff m => BodyType a => Request a -> ExceptV (STRING_ERROR + r) m (Response a)
+runRequest r = request r <#> lmap (printError >>> stringError) # liftAff # ExceptT
+
 expectRequest :: ∀ a. BodyType a => Request a -> Aff Unit
-expectRequest rqst = do
-  tryResp <- request rqst
-  resp <- tryResp # liftErrorVia printError
-  if between 200 299 $ unwrap resp.status
-  then pure unit
-  else throw (i"status "(show $ unwrap resp.status)". "(bodyStr resp) :: String)
+expectRequest = expectRequest' >>> handleErrors {stringError: log} 
+
+expectRequest' :: ∀ m a r. MonadAff m => BodyType a => Request a -> ExceptV (STRING_ERROR + r) m Unit
+expectRequest' rqst = do
+  resp <- request rqst # liftAff <#> lmap (printError >>> stringError) # ExceptT
+  when (not $ between 200 299 $ unwrap resp.status) $
+    throwError (stringError $ i"status "(show $ unwrap resp.status)". "(bodyStr resp))
 
 createQueryParameters :: String -> Map String String -> String
 createQueryParameters url keyPairs =

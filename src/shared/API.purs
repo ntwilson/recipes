@@ -5,6 +5,7 @@ import Shared.Prelude hiding ((/))
 import Data.Codec.Argonaut as Codec
 import Data.Codec.Argonaut.Record as Codec.Record
 import Data.Generic.Rep (class Generic, NoArguments)
+import HTTPurple (catchAll)
 import Recipes.DataStructures (AppState, CurrentUseCase, Ingredient, RecipeStep, StoreItem, storeItemCodec)
 import Routing.Duplex (RouteDuplex')
 import Routing.Duplex as Routing
@@ -31,6 +32,7 @@ data RecipeRoute
   | SetRecipeStatus
   | SetUseCase
   | RecipeSteps
+  | NotFound (Array String)
   
 
 derive instance Eq RecipeRoute
@@ -56,6 +58,7 @@ recipeRouteDuplex =
     , "SetRecipeStatus": apiPath "set-recipe-status"
     , "SetUseCase": apiPath "set-use-case"
     , "RecipeSteps": apiPath "recipe-steps"
+    , "NotFound": catchAll
     }
 
   where

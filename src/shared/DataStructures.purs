@@ -20,7 +20,7 @@ ingredientCodec = Codec.Record.object "Ingredient"
   { name: Codec.string, store: Codec.string, section: Codec.Compat.maybe Codec.string, common: Codec.boolean }
 
 knownIngredientCodec :: List Ingredient -> JsonCodec Ingredient
-knownIngredientCodec allIngredients = basicCodec decode encode
+knownIngredientCodec allIngredients = codec' decode encode
   where
   encode = Codec.encode ingredientCodec
   decode json = do
@@ -48,7 +48,7 @@ storeItemCodec :: JsonCodec StoreItem
 storeItemCodec = Codec.Record.object "StoreItem" { ingredient: ingredientCodec, amount: Codec.string }
 
 knownStoreItemCodec :: List Ingredient -> JsonCodec StoreItem
-knownStoreItemCodec allIngredients = basicCodec decode encode
+knownStoreItemCodec allIngredients = codec' decode encode
   where
   encode = Codec.encode storeItemCodec
   decode json = do
@@ -66,7 +66,7 @@ derive instance Generic ShoppingState _
 instance Show ShoppingState where show = genericShow
 
 shoppingStateCodec :: List Ingredient -> JsonCodec ShoppingState
-shoppingStateCodec allIngredients = basicCodec decode encode
+shoppingStateCodec allIngredients = codec' decode encode
   where 
   checkKitchenCodec = Codec.list storeItemCodec
   buyGroceriesCodec = Codec.Record.object "BuyGroceries" 

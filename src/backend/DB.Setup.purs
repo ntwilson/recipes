@@ -2,23 +2,22 @@ module Recipes.Backend.DB.Setup where
 
 import Backend.Prelude
 
-import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
+import Control.Monad.Except (runExceptT)
 import Control.Promise (Promise, toAff)
 import Data.List as List
+import Data.Newtype (wrap)
 import Effect.Exception (message)
 import Recipes.Backend.CosmosDB (class Container, Database, PartitionKey(..), PartitionKeyDefinition, RawContainer, containerName, newConnection, partitionKey, printQueryError)
 import Recipes.Backend.DB (AppStateContainer, IngredientsContainer, RecipeContainer, RecipeIngredientsContainer, RecipeStepsContainer)
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
-import Type.Proxy (Proxy(..))
 
 main :: Effect Unit
 main = launchAff_ do
   loadEnv
-  runExceptT setupDatabase >>= case _ of 
-    Left err -> log err
-    Right _ -> pure unit
+  setupDatabase 
+    # handleErrors { stringError: log }
 
 foreign import createContainer :: EffectFn3 Database String PartitionKeyDefinition (Promise RawContainer)
 foreign import deleteContainer :: Database -> String -> Effect (Promise Unit)
@@ -26,39 +25,43 @@ foreign import deleteContainer :: Database -> String -> Effect (Promise Unit)
 partitionKeyDef :: ∀ c a. PartitionKey c a -> PartitionKeyDefinition
 partitionKeyDef (PartitionKey { def }) = def
 
-setupDatabase :: ∀ m. MonadAff m => ExceptT String m Unit
+setupDatabase :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 setupDatabase = do
   setupSchema
   populateData
 
-setupSchema :: ∀ m. MonadAff m => ExceptT String m Unit
+setupSchema :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 setupSchema = do
 
   db <- newConnection
-  replaceContainer db (Proxy :: _ RecipeContainer)
-  replaceContainer db (Proxy :: _ IngredientsContainer)
-  replaceContainer db (Proxy :: _ RecipeIngredientsContainer)
-  replaceContainer db (Proxy :: _ RecipeStepsContainer)
+  replaceContainer @RecipeContainer db 
+  replaceContainer @IngredientsContainer db
+  replaceContainer @RecipeIngredientsContainer db
+  replaceContainer @RecipeStepsContainer db
 
-  void $ handleFFI $ runEffectFn3 createContainer db (containerName (Proxy :: _ AppStateContainer)) 
+  void $ handleFFI $ runEffectFn3 createContainer db (containerName @AppStateContainer) 
     $ partitionKeyDef (partitionKey :: PartitionKey AppStateContainer _)
   log "Created appState container"
 
   where
-  replaceContainer :: ∀ c a. Container c a => Database -> Proxy c -> ExceptT String m Unit
-  replaceContainer db proxy = do
-    let name = containerName proxy
-    deleteContainer db name # handleFFI # try # void
+  
+  replaceContainer :: ∀ @c a. Container c a => Database -> ExceptV (STRING_ERROR + r) m Unit
+  replaceContainer db = do
+    let name = containerName @c
+    deleteContainer db name # handleFFI # ignoreError
     void $ handleFFI $ runEffectFn3 createContainer db name $ partitionKeyDef (partitionKey :: PartitionKey c _)
     log $ i"Created "name" container"
 
 
-  handleFFI :: ∀ a. Effect (Promise a) -> ExceptT String m a
+  handleFFI :: ∀ r' a m'. MonadAff m' => Effect (Promise a) -> ExceptV (STRING_ERROR + r') m' a
   handleFFI fn = do
-    promise <- withExceptT message $ ExceptT $ liftEffect $ try fn
-    withExceptT message $ ExceptT $ liftAff $ try $ toAff promise
+    promise <- try fn # liftEffect <#> lmap (message >>> stringError) # wrap
+    toAff promise # try # liftAff <#> lmap (message >>> stringError) # wrap
 
-populateData :: ∀ m. MonadAff m => ExceptT String m Unit
+ignoreError :: ∀ m e. Functor m => ExceptV e m Unit -> m Unit
+ignoreError = runExceptT >>> void
+
+populateData :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 populateData = do
   populateRecipes
   populateIngredients
@@ -68,14 +71,14 @@ populateData = do
 
   where
   populateAppState = do
-    existingAppState <- DB.readAppState (List.fromFoldable ingredients) # withExceptT printQueryError
+    existingAppState <- DB.readAppState (List.fromFoldable ingredients) # printQueryError
     case existingAppState of
       Nothing -> do
         DB.insertAppState (List.fromFoldable ingredients) { useCase: Shopping, shoppingState: InputRecipes, cookingState: Nothing }
         log "Populated appState"
       _ -> log "AppState already populated"
 
-  populateRecipes :: ExceptT String m Unit
+  populateRecipes :: ExceptV (STRING_ERROR + r) m Unit
   populateRecipes = do
     traverse_ DB.insertRecipe recipes
     log "Populated recipes"
@@ -95,7 +98,7 @@ populateData = do
     , {name: "The Staples"}
     ]
 
-  populateIngredients :: ExceptT String m Unit
+  populateIngredients :: ExceptV (STRING_ERROR + r) m Unit
   populateIngredients = do
     traverse_ DB.insertIngredient ingredients
     log "Populated ingredients"
@@ -189,7 +192,7 @@ populateData = do
     , {name: "White wine vinegar", store: "Harris Teeter", section: Nothing, common: true}
     ]
 
-  populateRecipeIngredients :: ExceptT String m Unit
+  populateRecipeIngredients :: ExceptV (STRING_ERROR + r) m Unit
   populateRecipeIngredients = do
     traverse_ DB.insertRecipeIngredients recipeIngredients
     log "Populated recipeIngredients"
@@ -348,7 +351,7 @@ populateData = do
     , {recipe: "The Staples", ingredient: "Cream cheese", quantity: 2.0, units: Just "bricks"}
     ]
 
-  populateRecipeSteps :: ExceptT String m Unit
+  populateRecipeSteps :: ExceptV (STRING_ERROR + r) m Unit
   populateRecipeSteps = do
     traverse_ DB.insertRecipeSteps recipeSteps
     log "Populated recipeSteps"
