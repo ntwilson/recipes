@@ -105,108 +105,22 @@ in  upstream
 -------------------------------
 -}
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.10-20230812/packages.dhall
-        sha256:c3c28ba2ffa28d34c6d33b2277ed2cba660fce228a56269b5a127a4c10df3d51
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.13-20231125/packages.dhall
+        sha256:ed09f8f5ef3d77c5ad7f1b999532145fb31d48c84c547e7904f668f35ce3780e
 
 let overrides =
-      { concur-react =
-        { repo = "https://github.com/purescript-concur/purescript-concur-react"
-        , version = "v0.5.0"
-        , dependencies =
-          [ "aff"
-          , "arrays"
-          , "concur-core"
-          , "console"
-          , "effect"
-          , "either"
-          , "exceptions"
-          , "maybe"
-          , "prelude"
-          , "react"
-          , "react-dom"
-          , "transformers"
-          , "tuples"
-          , "unsafe-coerce"
-          , "web-dom"
-          , "web-events"
-          , "web-html"
-          ]
-        }
-      , concur-core =
-        { dependencies =
-          [ "aff"
-          , "aff-bus"
-          , "arrays"
-          , "avar"
-          , "console"
-          , "control"
-          , "datetime"
-          , "effect"
-          , "either"
-          , "exceptions"
-          , "foldable-traversable"
-          , "free"
-          , "identity"
-          , "lazy"
-          , "maybe"
-          , "newtype"
-          , "parallel"
-          , "prelude"
-          , "profunctor-lenses"
-          , "tailrec"
-          , "transformers"
-          , "tuples"
-          ]
-        , repo = "https://github.com/purescript-concur/purescript-concur-core"
-        , version = "v0.5.0"
-        }
-      , fetch =
-        { repo = "https://github.com/rowtype-yoga/purescript-fetch"
-        , version = "v1.1.4"
+      { spec-discovery =
+        { repo = "https://github.com/purescript-spec/purescript-spec-discovery"
+        , version = "v8.2.0"
         , dependencies =
           [ "aff"
           , "aff-promise"
-          , "arraybuffer-types"
           , "effect"
-          , "fetch-core"
-          , "foreign"
-          , "http-methods"
-          , "newtype"
-          , "prelude"
-          , "record"
-          , "typelevel-prelude"
-          , "unsafe-coerce"
-          , "web-file"
-          , "web-promise"
-          , "web-streams"
-          ]
-        }
-      , fetch-core =
-        { dependencies =
-          [ "arraybuffer-types"
-          , "arrays"
-          , "console"
-          , "effect"
+          , "either"
           , "foldable-traversable"
-          , "foreign"
-          , "foreign-object"
-          , "functions"
-          , "http-methods"
-          , "maybe"
-          , "newtype"
-          , "nullable"
           , "prelude"
-          , "record"
-          , "tuples"
-          , "typelevel-prelude"
-          , "unfoldable"
-          , "unsafe-coerce"
-          , "web-file"
-          , "web-promise"
-          , "web-streams"
+          , "spec"
           ]
-        , version = "v4.0.4"
-        , repo = "https://github.com/rowtype-yoga/purescript-fetch-core.git"
         }
       }
 

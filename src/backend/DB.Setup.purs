@@ -12,7 +12,6 @@ import Recipes.Backend.DB (AppStateContainer, IngredientsContainer, RecipeContai
 import Recipes.Backend.DB as DB
 import Recipes.Backend.ServerSetup (loadEnv)
 import Recipes.DataStructures (CurrentUseCase(..), ShoppingState(..))
-import Type.Proxy (Proxy(..))
 
 main :: Effect Unit
 main = launchAff_ do
@@ -35,20 +34,20 @@ setupSchema :: ∀ r m. MonadAff m => ExceptV (STRING_ERROR + r) m Unit
 setupSchema = do
 
   db <- newConnection
-  replaceContainer db (Proxy :: _ RecipeContainer)
-  replaceContainer db (Proxy :: _ IngredientsContainer)
-  replaceContainer db (Proxy :: _ RecipeIngredientsContainer)
-  replaceContainer db (Proxy :: _ RecipeStepsContainer)
+  replaceContainer @RecipeContainer db 
+  replaceContainer @IngredientsContainer db
+  replaceContainer @RecipeIngredientsContainer db
+  replaceContainer @RecipeStepsContainer db
 
-  void $ handleFFI $ runEffectFn3 createContainer db (containerName (Proxy :: _ AppStateContainer)) 
+  void $ handleFFI $ runEffectFn3 createContainer db (containerName @AppStateContainer) 
     $ partitionKeyDef (partitionKey :: PartitionKey AppStateContainer _)
   log "Created appState container"
 
   where
   
-  replaceContainer :: ∀ c a. Container c a => Database -> Proxy c -> ExceptV (STRING_ERROR + r) m Unit
-  replaceContainer db proxy = do
-    let name = containerName proxy
+  replaceContainer :: ∀ @c a. Container c a => Database -> ExceptV (STRING_ERROR + r) m Unit
+  replaceContainer db = do
+    let name = containerName @c
     deleteContainer db name # handleFFI # ignoreError
     void $ handleFFI $ runEffectFn3 createContainer db name $ partitionKeyDef (partitionKey :: PartitionKey c _)
     log $ i"Created "name" container"
