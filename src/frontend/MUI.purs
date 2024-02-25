@@ -7,15 +7,19 @@ import Concur.Core.DOM as Concur
 import Concur.Core.Props (Props(..))
 import Control.MultiAlternative (class MultiAlternative)
 import Control.ShiftMap (class ShiftMap)
+import Data.Array as Array
 import Effect.Uncurried (mkEffectFn1)
 import Foreign (Foreign, unsafeToForeign)
 import Foreign.Object (Object)
-import Option as Option
+import Foreign.Object as Object
 import React (ReactClass, ReactElement, unsafeCreateElement, unsafeCreateLeafElement)
 import React.SyntheticEvent (SyntheticMouseEvent)
 import Simple.JSON (class WriteForeign, writeImpl)
 import Type.Row.Homogeneous (class Homogeneous)
 import Unsafe.Coerce (unsafeCoerce)
+import Untagged.Castable (class Castable)
+import Untagged.Castable as Untagged
+import Untagged.Union (UndefinedOr, uorToMaybe)
 
 class (ShiftMap (Widget HTML) m, MultiAlternative m, LiftWidget HTML m) <= ReactWidget m
 instance (ShiftMap (Widget HTML) m, MultiAlternative m, LiftWidget HTML m) => ReactWidget m
@@ -26,12 +30,12 @@ el reactClass = Concur.el' (\props children -> [reactClass props children])
 elLeaf :: ∀ f props m a. ReactWidget m => Functor f => (f props -> ReactElement) -> f (Props props a) -> m a
 elLeaf reactClass = Concur.elLeaf (\props -> [reactClass props])
 
-optionToObject :: ∀ r a. Homogeneous r a => Option.Option r -> Object a
-optionToObject = unsafeCoerce
+recordToObject :: ∀ r a. Homogeneous r a => Record r -> Object a
+recordToObject = unsafeCoerce
 
--- We're taking a generic props type as input, probably an Option of some sort. As far as Concur is concerned though, it needs
--- some Functor of a prop type, and we need to convert that Option to a homogenous Functor. Typical usage would be to convert 
--- the Option to an Object, and just make each value of the Option into a `Props Foreign a`.
+-- We're taking a generic props type as input, probably a Record of some sort. As far as Concur is concerned though, it needs
+-- some Functor of a prop type, and we need to convert that Record to a homogenous Functor. Typical usage would be to convert 
+-- the Record to an Object, and just make each value of the Record into a `Props Foreign a`.
 -- The view type (`v`) will be HTML, which is just an alias for an Array ReactElement.
 
 -- Handlers are the tricky part of creating a `Props Foreign a`.  The Handler constructor is `Handler :: (a -> Effect Unit) -> p`.  
@@ -54,14 +58,16 @@ data CSS
 css :: ∀ r. { | r } -> CSS
 css = unsafeCoerce
 
-type ButtonProps a = Option.Option
-  ( className :: String
-  , color :: String
-  , disabled :: Boolean
-  , id :: String
-  , onClick :: SyntheticMouseEvent -> a
-  , style :: CSS
-  )
+type ButtonProps a =
+  { className :: UndefinedOr String
+  , color :: UndefinedOr String
+  , disabled :: UndefinedOr Boolean
+  , id :: UndefinedOr String
+  , onClick :: UndefinedOr (SyntheticMouseEvent -> a)
+  , style :: UndefinedOr CSS
+  }
+buttonProps :: ∀ a r. Castable a (ButtonProps r) => a -> ButtonProps r
+buttonProps = Untagged.cast
 
 foreign import rawButton :: ReactClass Void
 rawButtonImpl :: Object Foreign -> Array ReactElement -> ReactElement
@@ -70,32 +76,35 @@ rawButtonImpl props = unsafeCreateElement (unsafeCoerce rawButton) $ unsafeCoerc
 button :: ∀ a m. ReactWidget m => ButtonProps a -> Array (m a) -> m a
 button = widget rawButtonImpl makeProps
   where 
-  makeProps props = optionToObject $ flip Option.modify' props
-    { className: PrimProp <<< unsafeToForeign
-    , color: PrimProp <<< unsafeToForeign
-    , disabled: PrimProp <<< unsafeToForeign
-    , id: PrimProp <<< unsafeToForeign
-    , onClick: \fn -> makeHandler fn
-    , style: PrimProp <<< unsafeToForeign
-    }
+  makeProps props = Object.fromFoldable $ Array.catMaybes
+    [ props.className # uorToMaybe <#> \className -> "className" /\ PrimProp (unsafeToForeign className)
+    , props.color # uorToMaybe <#> \color -> "color" /\ PrimProp (unsafeToForeign color)
+    , props.disabled # uorToMaybe <#> \disabled -> "disabled" /\ PrimProp (unsafeToForeign disabled)
+    , props.id # uorToMaybe <#> \id -> "id" /\ PrimProp (unsafeToForeign id)
+    , props.onClick # uorToMaybe <#> \onClick -> "onClick" /\ makeHandler onClick
+    , props.style # uorToMaybe <#> \style -> "style" /\ PrimProp (unsafeToForeign style)
+    ]
 
 data TextSize = TextSmall | TextMedium
 instance WriteForeign TextSize where
   writeImpl TextSmall = writeImpl "small"
   writeImpl TextMedium = writeImpl "medium"
 
-type TextFieldProps a = Option.Option
-  ( className :: String
-  , classes :: { root :: String }
-  , disabled :: Boolean
-  , id :: String
-  , label :: String
-  , autoFocus :: Boolean
-  , error :: Boolean
-  , value :: String
-  , size :: TextSize
-  , onChange :: String -> a
-  )
+type TextFieldProps a =
+  { className :: UndefinedOr String
+  , classes :: UndefinedOr { root :: String }
+  , disabled :: UndefinedOr Boolean
+  , id :: UndefinedOr String
+  , label :: UndefinedOr String
+  , autoFocus :: UndefinedOr Boolean
+  , error :: UndefinedOr Boolean
+  , value :: UndefinedOr String
+  , size :: UndefinedOr TextSize
+  , onChange :: UndefinedOr (String -> a)
+  }
+
+textFieldProps :: ∀ a r. Castable a (TextFieldProps r) => a -> TextFieldProps r
+textFieldProps = Untagged.cast
 
 foreign import rawTextField :: ReactClass Void
 rawTextFieldImpl :: Object Foreign -> Array ReactElement -> ReactElement
@@ -104,21 +113,21 @@ rawTextFieldImpl props = unsafeCreateElement (unsafeCoerce rawTextField) $ unsaf
 textField :: ∀ a m. ReactWidget m => TextFieldProps a -> Array (m a) -> m a
 textField = widget rawTextFieldImpl makeProps
   where 
-  makeProps props = optionToObject $ flip Option.modify' props
-    { className: PrimProp <<< unsafeToForeign
-    , classes: PrimProp <<< unsafeToForeign
-    , size: PrimProp <<< writeImpl
-    , disabled: PrimProp <<< unsafeToForeign
-    , id: PrimProp <<< unsafeToForeign
-    , label: PrimProp <<< unsafeToForeign
-    , autoFocus: PrimProp <<< unsafeToForeign
-    , error: PrimProp <<< unsafeToForeign
-    , value: PrimProp <<< unsafeToForeign
-    , onChange: \transformValue -> Handler 
+  makeProps props = Object.fromFoldable $ Array.catMaybes
+    [ props.className # uorToMaybe <#> \className -> "className" /\ PrimProp (unsafeToForeign className)
+    , props.classes # uorToMaybe <#> \classes -> "classes" /\ PrimProp (unsafeToForeign classes)
+    , props.size # uorToMaybe <#> \size -> "size" /\ PrimProp (writeImpl size)
+    , props.disabled # uorToMaybe <#> \disabled -> "disabled" /\ PrimProp (unsafeToForeign disabled)
+    , props.id # uorToMaybe <#> \id -> "id" /\ PrimProp (unsafeToForeign id)
+    , props.label # uorToMaybe <#> \label -> "label" /\ PrimProp (unsafeToForeign label)
+    , props.autoFocus # uorToMaybe <#> \autoFocus -> "autoFocus" /\ PrimProp (unsafeToForeign autoFocus)
+    , props.error # uorToMaybe <#> \error -> "error" /\ PrimProp (unsafeToForeign error)
+    , props.value # uorToMaybe <#> \value -> "value" /\ PrimProp (unsafeToForeign value)
+    , props.onChange # uorToMaybe <#> \onChange -> "onChange" /\ Handler 
       (\effFn -> unsafeToForeign $ mkEffectFn1 
-        \event -> effFn $ transformValue $ (unsafeCoerce event).target.value
+        \event -> effFn $ onChange $ (unsafeCoerce event).target.value
       )
-    }
+    ]
 
 
 
@@ -126,38 +135,38 @@ foreign import rawCheckbox :: ReactClass Void
 rawCheckboxImpl :: Object Foreign -> ReactElement
 rawCheckboxImpl props = unsafeCreateLeafElement rawCheckbox $ unsafeCoerce props
 
-type CheckboxProps a = Option.Option
-  ( icon :: ReactElement
-  , checkedIcon :: ReactElement
-  , classes :: { root :: String }
-  , disabled :: Boolean
-  , checked :: Boolean
-  , id :: String
-  , defaultChecked :: Boolean
-  , inputProps :: { "aria-label" :: String }
-  , onClick :: Boolean -> a
-  )
+type CheckboxProps a =
+  { icon :: UndefinedOr ReactElement
+  , checkedIcon :: UndefinedOr ReactElement
+  , classes :: UndefinedOr { root :: String }
+  , disabled :: UndefinedOr Boolean
+  , checked :: UndefinedOr Boolean
+  , id :: UndefinedOr String
+  , defaultChecked :: UndefinedOr Boolean
+  , inputProps :: UndefinedOr { "aria-label" :: String }
+  , onClick :: UndefinedOr (Boolean -> a)
+  }
+
+checkboxProps :: ∀ a @r. Castable a (CheckboxProps r) => a -> CheckboxProps r
+checkboxProps = Untagged.cast
 
 checkbox :: ∀ a m. ReactWidget m => CheckboxProps a -> m a
 checkbox = widgetLeaf rawCheckboxImpl checkProps
   where 
-  checkProps = optionToObject <<< Option.modify' 
-    { disabled: PrimProp <<< unsafeToForeign
-    , icon: PrimProp <<< unsafeToForeign
-    , checkedIcon: PrimProp <<< unsafeToForeign
-    , classes: PrimProp <<< unsafeToForeign
-    , checked: PrimProp <<< unsafeToForeign
-    , defaultChecked: PrimProp <<< unsafeToForeign
-    , id: PrimProp <<< unsafeToForeign
-    , inputProps: PrimProp <<< unsafeToForeign
-    , onClick: 
-      \transformValue -> Handler 
-        (\effFn -> unsafeToForeign $ mkEffectFn1 
-          \event -> effFn $ transformValue $ (unsafeCoerce event).target.checked
-        ) 
-    }
-
-
+  checkProps props = Object.fromFoldable $ Array.catMaybes
+    [ props.disabled # uorToMaybe <#> \disabled -> "disabled" /\ PrimProp (unsafeToForeign disabled)
+    , props.icon # uorToMaybe <#> \icon -> "icon" /\ PrimProp (unsafeToForeign icon)
+    , props.checkedIcon # uorToMaybe <#> \checkedIcon -> "checkedIcon" /\ PrimProp (unsafeToForeign checkedIcon)
+    , props.classes # uorToMaybe <#> \classes -> "classes" /\ PrimProp (unsafeToForeign classes)
+    , props.checked # uorToMaybe <#> \checked -> "checked" /\ PrimProp (unsafeToForeign checked)
+    , props.defaultChecked # uorToMaybe <#> \defaultChecked -> "defaultChecked" /\ PrimProp (unsafeToForeign defaultChecked)
+    , props.id # uorToMaybe <#> \id -> "id" /\ PrimProp (unsafeToForeign id)
+    , props.inputProps # uorToMaybe <#> \inputProps -> "inputProps" /\ PrimProp (unsafeToForeign inputProps)
+    , props.onClick # uorToMaybe <#> \onClick -> "onClick" /\ Handler 
+      (\effFn -> unsafeToForeign $ mkEffectFn1 
+        \event -> effFn $ onClick $ (unsafeCoerce event).target.checked
+      ) 
+    ]
 
 foreign import rawFormGroup :: ReactClass Void
 rawFormGroupImpl :: Array ReactElement -> ReactElement
@@ -194,28 +203,35 @@ instance WriteForeign FabColor where
   writeImpl Warning = writeImpl "warning"
 
 type FabProps :: Type -> Type
-type FabProps a = Option.Option 
-  ( size :: FabSize
-  , style :: CSS
-  , variant :: FabVariant
-  , disabled :: Boolean
-  , color :: FabColor
-  , classes :: { root :: String }
-  , onClick :: SyntheticMouseEvent -> a
-  )
+type FabProps a =
+  { size :: UndefinedOr FabSize
+  , style :: UndefinedOr CSS
+  , variant :: UndefinedOr FabVariant
+  , disabled :: UndefinedOr Boolean
+  , color :: UndefinedOr FabColor
+  , classes :: UndefinedOr { root :: String }
+  , onClick :: UndefinedOr (SyntheticMouseEvent -> a)
+  }
 
+fabProps :: ∀ a @r. Castable a (FabProps r) => a -> FabProps r
+fabProps = Untagged.cast
+
+-- widget :: ∀ f m usedProps p a. ReactWidget m => Functor f =>
+--   (f p -> HTML -> ReactElement) -> (usedProps -> f (Props p a)) -> usedProps -> Array (m a) -> m a
 floatingActionButton :: ∀ a m. ReactWidget m => FabProps a -> Array (m a) -> m a 
 floatingActionButton = widget (unsafeCoerce rawFabImpl) makeProps
   where
-  makeProps = optionToObject <<< Option.modify'
-    { size: PrimProp <<< writeImpl
-    , style: PrimProp <<< unsafeToForeign
-    , variant: PrimProp <<< writeImpl
-    , disabled: PrimProp <<< writeImpl
-    , color: PrimProp <<< writeImpl
-    , classes: PrimProp <<< writeImpl
-    , onClick: \fn -> makeHandler fn
-    }
+
+  makeProps :: FabProps a -> Object (Props Foreign a)
+  makeProps props = Object.fromFoldable $ Array.catMaybes
+    [ props.size # uorToMaybe <#> \size -> "size" /\ PrimProp (writeImpl size)
+    , props.style # uorToMaybe <#> \style -> "style" /\ PrimProp (unsafeToForeign style)
+    , props.variant # uorToMaybe <#> \variant -> "variant" /\ PrimProp (writeImpl variant)
+    , props.disabled # uorToMaybe <#> \disabled -> "disabled" /\ PrimProp (writeImpl disabled)
+    , props.color # uorToMaybe <#> \color -> "color" /\ PrimProp (writeImpl color)
+    , props.classes # uorToMaybe <#> \classes -> "classes" /\ PrimProp (writeImpl classes)
+    , props.onClick # uorToMaybe <#> \onClick -> "onClick" /\ makeHandler onClick
+    ]
 
 foreign import rawAddIcon :: ReactClass Void
 

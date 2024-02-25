@@ -5,7 +5,6 @@ import Frontend.Prelude
 import Concur.React.Props as Props
 import Data.List (List, (:))
 import Data.List as List
-import Option as Option
 import Recipes.Frontend.MUI as MUI
 
 type RecipeListItem = {name :: String, checked :: Boolean}
@@ -14,7 +13,7 @@ nextRecipe allRecipes =
   fold 
     (allRecipes <#> \recipe -> 
       div'
-        [ MUI.checkbox $ Option.fromRecord { onClick: \_ -> recipe, checked: recipe.checked, inputProps: { "aria-label": "controlled" } }
+        [ MUI.checkbox $ MUI.checkboxProps { onClick: \(_::Boolean) -> recipe, checked: recipe.checked, inputProps: { "aria-label": "controlled" } }
         , span [Props.onClick $> recipe, Props.className "checkbox-text"] [text recipe.name]
         ]
     )

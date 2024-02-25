@@ -39,54 +39,54 @@ import Data.Codec.Argonaut.Compat as Codec.Compat
 import Data.Codec.Argonaut.Record as Codec.Record
 import Data.List (List)
 import Data.Newtype (class Newtype)
-import Recipes.Backend.CosmosDB (class Container, DeleteError(..), ItemID(..), PartitionKey(..), QueryError(..), RawContainer, deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
+import Recipes.Backend.CosmosDB (class Container, DELETE_ERROR, ItemID(..), PartitionKey(..), QUERY_ERROR, RawContainer, dbError, deleteViaFind, getContainer, getItem, getPartitionKey, insert, newPartitionKeyDef, pointDelete, readAll)
 import Recipes.DataStructures (AppState, Ingredient, RecipeSteps, RecipeIngredients, appStateCodecFields)
 import Record as Record
 import Type.Proxy (Proxy(..))
 
 
-type ReadAll m a = MonadAff m => ExceptT QueryError m (Array a)
-type Insert m a = MonadAff m => a -> ExceptT String m Unit
-type Delete m a = MonadAff m => a -> ExceptT DeleteError m Unit
+type ReadAll m r a = ExceptV (QUERY_ERROR + r) m (Array a)
+type Insert m r a = a -> ExceptV (STRING_ERROR + r) m Unit
+type Delete m r a = a -> ExceptV (DELETE_ERROR + r) m Unit
 
 recipesPartitionKey :: PartitionKey RecipeContainer {name :: String}
 recipesPartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor: _.name }
 getRecipeID :: {name::String} -> ItemID
 getRecipeID {name} = ItemID name
 recipeCodec :: JsonCodec {name::String}
-recipeCodec = basicCodec decoder encoder
+recipeCodec = codec' decoder encoder
   where
   codec = Codec.Record.object "Recipe" {id: Codec.string}
   encoder {name} = encode codec {id: name}
   decoder json = decode codec json <#> Record.rename (Proxy :: _ "id") (Proxy :: _ "name")
 newtype RecipeContainer = RecipeContainer RawContainer
 derive instance Newtype RecipeContainer _
-instance Container RecipeContainer {name :: String} where 
+instance Container RecipeContainer {name :: String} where
   partitionKey = recipesPartitionKey
-  containerName _ = "recipes"
-recipesContainer :: ∀ m. MonadEffect m => ExceptT String m RecipeContainer
+  containerName = "recipes"
+recipesContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m RecipeContainer
 recipesContainer = getContainer
   
-readAllRecipes :: ∀ m. ReadAll m {name::String}
+readAllRecipes :: ∀ m r. MonadAff m => ReadAll m r {name::String}
 readAllRecipes = do
-  container <- recipesContainer # withExceptT (error >>> DBError)
+  container <- recipesContainer # handleError { stringError: throwError <<< dbError <<< error }
   readAll recipeCodec container
-insertRecipe :: ∀ m. Insert m {name::String}
+insertRecipe :: ∀ m r. MonadAff m => Insert m r {name::String}
 insertRecipe item = do
   container <- recipesContainer
   insert recipeCodec container item
 
-deleteRecipe :: ∀ m. Delete m {name::String}
+deleteRecipe :: ∀ m r. MonadAff m => Delete m r {name::String}
 deleteRecipe item = do
-  container <- recipesContainer # withExceptT (Err <<< DBError <<< error)
-  pointDelete container (getRecipeID item) (getPartitionKey recipesPartitionKey item) # withExceptT (Err <<< DBError)
+  container <- recipesContainer # handleError {stringError: throwError <<< dbError <<< error }
+  pointDelete container (getRecipeID item) (getPartitionKey recipesPartitionKey item) # handleError { error: throwError <<< dbError }
 
 ingredientsPartitionKey :: PartitionKey IngredientsContainer Ingredient
 ingredientsPartitionKey = PartitionKey { def: newPartitionKeyDef "/id", accessor: _.name }
 getIngredientID :: Ingredient -> ItemID
 getIngredientID {name} = ItemID name
 ingredientCodec :: JsonCodec Ingredient
-ingredientCodec = basicCodec decoder encoder
+ingredientCodec = codec' decoder encoder
   where
   codec = Codec.Record.object "Ingredient" 
     { id: Codec.string, store: Codec.string, section: Codec.Compat.maybe Codec.string, common: Codec.boolean }
@@ -97,19 +97,19 @@ newtype IngredientsContainer = IngredientsContainer RawContainer
 derive instance Newtype IngredientsContainer _
 instance Container IngredientsContainer Ingredient where 
   partitionKey = ingredientsPartitionKey
-  containerName _ = "ingredients"
-ingredientsContainer :: ∀ m. MonadEffect m => ExceptT String m IngredientsContainer
+  containerName = "ingredients"
+ingredientsContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m IngredientsContainer
 ingredientsContainer = getContainer
-readAllIngredients :: ∀ m. ReadAll m Ingredient
-readAllIngredients = readAll ingredientCodec =<< withExceptT (DBError <<< error) ingredientsContainer
-insertIngredient :: ∀ m. Insert m Ingredient
+readAllIngredients :: ∀ r m. MonadAff m => ReadAll m r Ingredient
+readAllIngredients = ingredientsContainer # handleError { stringError: throwError <<< dbError <<< error } >>= readAll ingredientCodec 
+insertIngredient :: ∀ m r. MonadAff m => Insert m r Ingredient
 insertIngredient item = do
   container <- ingredientsContainer
   insert ingredientCodec container item
-deleteIngredient :: ∀ m. Delete m Ingredient
+deleteIngredient :: ∀ m r. MonadAff m => Delete m r Ingredient
 deleteIngredient item = do
-  container <- ingredientsContainer # withExceptT (Err <<< DBError <<< error)
-  pointDelete container (getIngredientID item) (getPartitionKey ingredientsPartitionKey item) # withExceptT (Err <<< DBError)
+  container <- ingredientsContainer # handleError { stringError: throwError <<< dbError <<< error }
+  pointDelete container (getIngredientID item) (getPartitionKey ingredientsPartitionKey item) # handleError { error: throwError <<< dbError }
 
 recipeIngredientsPartitionKey :: PartitionKey RecipeIngredientsContainer RecipeIngredients
 recipeIngredientsPartitionKey = PartitionKey { def: newPartitionKeyDef "/recipe", accessor: _.recipe }
@@ -120,22 +120,23 @@ newtype RecipeIngredientsContainer = RecipeIngredientsContainer RawContainer
 derive instance Newtype RecipeIngredientsContainer _
 instance Container RecipeIngredientsContainer RecipeIngredients where 
   partitionKey = recipeIngredientsPartitionKey
-  containerName _ = "recipeIngredients"
-recipeIngredientsContainer :: ∀ m. MonadEffect m => ExceptT String m RecipeIngredientsContainer
+  containerName = "recipeIngredients"
+recipeIngredientsContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m RecipeIngredientsContainer
 recipeIngredientsContainer = getContainer
 
-readAllRecipeIngredients :: ∀ m. ReadAll m RecipeIngredients
-readAllRecipeIngredients = readAll recipeIngredientsCodec =<< withExceptT (error >>> DBError) recipeIngredientsContainer
-insertRecipeIngredients :: ∀ m. Insert m RecipeIngredients
+readAllRecipeIngredients :: ∀ m r. MonadAff m => ReadAll m r RecipeIngredients
+readAllRecipeIngredients = 
+  recipeIngredientsContainer # handleError { stringError: throwError <<< dbError <<< error } >>= readAll recipeIngredientsCodec
+insertRecipeIngredients :: ∀ m r. MonadAff m => Insert m r RecipeIngredients
 insertRecipeIngredients item = do
   container <- recipeIngredientsContainer
   insert recipeIngredientsCodec container item
-deleteRecipeIngredients :: ∀ m. Delete m RecipeIngredients
+deleteRecipeIngredients :: ∀ m r. MonadAff m => Delete m r RecipeIngredients
 deleteRecipeIngredients item = do
-  container <- recipeIngredientsContainer # withExceptT (Err <<< DBError <<< error)
+  container <- recipeIngredientsContainer # handleError { stringError: throwError <<< dbError <<< error }
   deleteViaFind recipeIngredientsCodec equate container item
   where 
-  equate = equating _.recipe && equating _.ingredient
+  equate = (eq `on` _.recipe) && (eq `on` _.ingredient)
 
 recipeStepsPartitionKey :: PartitionKey RecipeStepsContainer RecipeSteps
 recipeStepsPartitionKey = PartitionKey { def: newPartitionKeyDef "/recipeName", accessor: _.recipeName }
@@ -146,22 +147,22 @@ newtype RecipeStepsContainer = RecipeStepsContainer RawContainer
 derive instance Newtype RecipeStepsContainer _
 instance Container RecipeStepsContainer RecipeSteps where 
   partitionKey = recipeStepsPartitionKey
-  containerName _ = "recipeSteps"
-recipeStepsContainer :: ∀ m. MonadEffect m => ExceptT String m RecipeStepsContainer
+  containerName = "recipeSteps"
+recipeStepsContainer :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m RecipeStepsContainer
 recipeStepsContainer = getContainer
 
-readAllRecipeSteps :: ∀ m. ReadAll m RecipeSteps
-readAllRecipeSteps = readAll recipeStepsCodec =<< withExceptT (error >>> DBError) recipeStepsContainer
-insertRecipeSteps :: ∀ m. Insert m RecipeSteps
+readAllRecipeSteps :: ∀ m r. MonadAff m => ReadAll m r RecipeSteps
+readAllRecipeSteps = recipeStepsContainer # handleError { stringError: throwError <<< dbError <<< error } >>= readAll recipeStepsCodec
+insertRecipeSteps :: ∀ m r. MonadAff m => Insert m r RecipeSteps
 insertRecipeSteps item = do
   container <- recipeStepsContainer
   insert recipeStepsCodec container item
-deleteRecipeSteps :: ∀ m. Delete m RecipeSteps
+deleteRecipeSteps :: ∀ m r. MonadAff m => Delete m r RecipeSteps
 deleteRecipeSteps item = do
-  container <- recipeStepsContainer # withExceptT (Err <<< DBError <<< error)
+  container <- recipeStepsContainer # handleError { stringError: throwError <<< dbError <<< error }
   deleteViaFind recipeStepsCodec equate container item
   where 
-  equate = equating _.recipeName && equating _.stepNumber
+  equate = (eq `on` _.recipeName) && (eq `on` _.stepNumber)
 
 appStatePartitionKeyValue :: String
 appStatePartitionKeyValue = "singleton"
@@ -173,11 +174,11 @@ newtype AppStateContainer = AppStateContainer RawContainer
 derive instance Newtype AppStateContainer _
 instance Container AppStateContainer AppState where 
   partitionKey = appStatePartitionKey
-  containerName _ = "appState"
-appStateContainer :: ∀ m. MonadEffect m => ExceptT String m AppStateContainer
+  containerName = "appState"
+appStateContainer :: ∀ m r. MonadEffect m => ExceptV (STRING_ERROR + r) m AppStateContainer
 appStateContainer = getContainer
 appStateDBCodec :: _ -> _
-appStateDBCodec ingredients = basicCodec decoder encoder
+appStateDBCodec ingredients = codec' decoder encoder
   where
   itemIDCodec :: JsonCodec ItemID
   itemIDCodec = unsafeCoerce Codec.string
@@ -185,16 +186,17 @@ appStateDBCodec ingredients = basicCodec decoder encoder
   encoder appState = encode codec $ Record.insert (Proxy :: _ "id") appStateID appState
   decoder json = decode codec json <#> Record.delete (Proxy :: _ "id")
 
-readAppState :: ∀ m. MonadAff m => List Ingredient -> ExceptT QueryError m (Maybe AppState)
+readAppState :: ∀ m r. MonadAff m => List Ingredient -> ExceptV (QUERY_ERROR + r) m (Maybe AppState)
 readAppState ingredients = do
-  container <- withExceptT (error >>> DBError) appStateContainer
+  container <- appStateContainer # handleError { stringError: throwError <<< dbError <<< error }
   getItem (appStateDBCodec ingredients) container appStateID appStatePartitionKeyValue
-insertAppState :: ∀ m. _ -> Insert m AppState
+insertAppState :: ∀ m r. MonadAff m => _ -> Insert m r AppState
 insertAppState ingredients item = do
   container <- appStateContainer
   insert (appStateDBCodec ingredients) container item
 
-deleteAppState :: ∀ m. MonadAff m => ExceptT DeleteError m Unit
+deleteAppState :: ∀ m r. MonadAff m => ExceptV (DELETE_ERROR + r) m Unit
 deleteAppState = do
-  container <- appStateContainer # withExceptT (Err <<< DBError <<< error)
-  pointDelete container appStateID appStatePartitionKeyValue # withExceptT (Err <<< DBError)
+  container <- appStateContainer # handleError { stringError: throwError <<< dbError <<< error }
+  pointDelete container appStateID appStatePartitionKeyValue # handleError { error: throwError <<< dbError }
+
