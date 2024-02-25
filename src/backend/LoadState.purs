@@ -45,20 +45,20 @@ setState state = do
   DB.insertAppState (List.fromFoldable ingredients) state
 
 
-addIngredient :: Ingredient -> ExceptT String Aff Unit
+addIngredient :: forall m r. MonadAff m => Ingredient -> ExceptV (STRING_ERROR r) m Unit
 addIngredient = DB.insertIngredient
 
-insertRecipeIfNotExists :: {name :: String} -> ExceptT String Aff Unit
+insertRecipeIfNotExists :: ∀ r m. MonadAff m => {name :: String} -> ExceptV (STRING_ERROR + QUERY_ERROR + r) m Unit
 insertRecipeIfNotExists recipe@{name} = do
   existingRecipes <- allRecipes
   when (not Array.elem name existingRecipes) $ DB.insertRecipe recipe
 
-addShopRecipe :: {name :: String} -> List RecipeIngredients -> ExceptT String Aff Unit
+addShopRecipe :: ∀ r m. MonadAff m => {name :: String} -> List RecipeIngredients -> ExceptV (STRING_ERROR + QUERY_ERROR + r) m Unit
 addShopRecipe recipe ingredients = do
   insertRecipeIfNotExists recipe
   traverse_ DB.insertRecipeIngredients ingredients
 
-upsertRecipeStep :: RecipeSteps -> ExceptT String Aff Unit
+upsertRecipeStep :: ∀ r m. MonadAff m => RecipeSteps -> ExceptV (STRING_ERROR + QUERY_ERROR + r) m Unit
 upsertRecipeStep step@{recipeName} = do
   insertRecipeIfNotExists {name: recipeName}
   DB.deleteRecipeSteps step # runExceptT # void # lift

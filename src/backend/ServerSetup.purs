@@ -24,7 +24,7 @@ serverOptions mode = do
     port = fromMaybe 80 (Int.fromString =<< portStr)
     startupSuffix = caseMaybe {nothing: "", just: \m -> i" in "m" mode"} mode 
     startupMsg :: String
-    startupMsg = i "starting server: "hostname":"port"/"startupSuffix
+    startupMsg = i "starting server: http://"hostname":"port"/"startupSuffix
     opts = {hostname, port, onStarted: log startupMsg}
 
   pure {opts, dist: "./dist"}
