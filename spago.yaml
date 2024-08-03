@@ -1,0 +1,84 @@
+package:
+
+  build:
+    # Fail the build if this package's `dependencies` field has redundant/underspecified packages.
+    pedanticPackages: true
+    censorProjectWarnings:
+      - ImplicitQualifiedImport
+      - WildcardInferredType
+      - ScopeShadowing
+
+  test:
+    dependencies: []
+    main: Test.Main
+    censorTestWarnings:
+      - ImplicitQualifiedImport
+      - WildcardInferredType
+      - ScopeShadowing
+
+  dependencies:
+    - aff
+    - aff-promise
+    - affjax
+    - affjax-web
+    - argonaut-core
+    - arrays
+    - bifunctors
+    - checked-exceptions
+    - codec
+    - codec-argonaut
+    - concur-core
+    - concur-react
+    - console
+    - control
+    - dotenv
+    - effect
+    - either
+    - exceptions
+    - foldable-traversable
+    - foreign
+    - foreign-object
+    - functions
+    - http-methods
+    - httpurple
+    - integers
+    - interpolate
+    - lists
+    - maybe
+    - newtype
+    - node-buffer
+    - node-fs
+    - node-process
+    - ordered-collections
+    - prelude
+    - react
+    - record
+    - routing-duplex
+    - simple-json
+    - spec
+    - spec-discovery
+    - strings
+    - transformers
+    - tuples
+    - typelevel-prelude
+    - unsafe-coerce
+    - untagged-union
+    - variant
+    - web-html
+  name: recipes
+
+workspace:
+  extraPackages:
+    spec-discovery:
+      dependencies:
+        - aff
+        - aff-promise
+        - effect
+        - either
+        - foldable-traversable
+        - prelude
+        - spec
+      git: https://github.com/purescript-spec/purescript-spec-discovery
+      ref: v8.2.0
+  packageSet:
+    registry: 56.4.0
