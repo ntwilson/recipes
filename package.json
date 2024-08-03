@@ -8,13 +8,13 @@
   },
   "scripts": {
     "start-prod": "node release/main.js",
-    "start": "spago run -m Recipes.Backend.Main --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
-    "ps": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
-    "test": "spago test --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\"",
+    "start": "spago run -m Recipes.Backend.Main",
+    "ps": "spago build",
+    "test": "spago test",
     "build": "npm run ps && webpack && webpack -t node -c webpack.backend.config.js",
     "watch": "npm run ps && webpack -w",
     "clean": "rm -r output/Recipes*",
-    "setup-db": "spago run -m Recipes.Backend.DB.Setup --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,HidingImport,WildcardInferredType\""
+    "setup-db": "spago run -m Recipes.Backend.DB.Setup"
   },
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
     "esbuild": "^0.15.7",
     "purescript": "^0.15.13",
     "purescript-psa": "^0.8.2",
-    "spago": "^0.20.9",
+    "spago": "^0.93.37",
     "webpack": "^5.74.0",
     "webpack-cli": "^4.5.0",
     "webpack-merge": "^5.7.3"
