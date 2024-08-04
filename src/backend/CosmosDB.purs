@@ -64,18 +64,15 @@ getPartitionKey (PartitionKey {accessor}) = accessor
 
 type ConnectConfig = 
   { endpoint :: String
-  , key :: String
   , databaseId :: String
   }
 
 connectionConfig :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m ConnectConfig
 connectionConfig = do
-  key <- env "COSMOS_KEY"
   databaseId <- env "COSMOS_DB"
 
   pure $ 
     { endpoint: "https://ntw-cosmos.documents.azure.com:443/"
-    , key 
     , databaseId
     }
 
@@ -102,7 +99,7 @@ newConnection = do
 foreign import data Database :: Type
 foreign import data RawContainer :: Type
 foreign import data CosmosClient :: Type
-foreign import cosmosClient :: ∀ r. EffectFn1 { endpoint :: String, key :: String | r } CosmosClient
+foreign import cosmosClient :: ∀ r. EffectFn1 { endpoint :: String | r } CosmosClient
 foreign import database :: EffectFn1 ConnectConfig Database
 foreign import getContainerImpl :: EffectFn2 Database String (RawContainer)
 
