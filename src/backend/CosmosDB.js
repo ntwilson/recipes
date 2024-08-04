@@ -1,9 +1,12 @@
 import { CosmosClient } from "@azure/cosmos";
+import { DefaultAzureCredential } from "@azure/identity";
 
-export function cosmosClient(config) { return new CosmosClient(config); }
+const credential = new DefaultAzureCredential();
 
-export function database({ endpoint, key, databaseId }) {
-  return new CosmosClient({endpoint, key}).database(databaseId);
+export function cosmosClient(endpoint, databaseId) { return new CosmosClient({endpoint, databaseId, aadCredentials: credential}); }
+
+export function database({ endpoint, databaseId }) {
+  return new CosmosClient({endpoint, aadCredentials: credential}).database(databaseId);
 }
 
 export function getContainerImpl(database, containerId) {
