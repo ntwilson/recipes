@@ -15,8 +15,9 @@ import Data.List as List
 import Recipes.API (RecipesValue)
 import Recipes.API as Routing
 import Recipes.DataStructures (AppState, CurrentUseCase(..), Ingredient, ShoppingState(..), appStateCodec, ingredientCodec, useCaseCodec)
+import Recipes.Frontend.ExceptVWidget (ExceptVWidget(..), runExceptVWidget)
 import Recipes.Frontend.GroceryList (groceryList)
-import Recipes.Frontend.Http (expectRequest, expectRequest', runRequest)
+import Recipes.Frontend.Http (expectRequest, runRequest)
 import Recipes.Frontend.PantryList (pantryList)
 import Recipes.Frontend.RecipeList (recipeList)
 import Recipes.Frontend.RecipeSelection (recipeSelection)
@@ -32,7 +33,7 @@ loadRecipes = do
 
 submitRecipes :: ∀ m r. MonadAff m => List String -> ExceptV (STRING_ERROR + r) m Unit
 submitRecipes recipes = 
-  expectRequest' $ defaultRequest 
+  expectRequest $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SubmitRecipes
     , content = Just $ RequestBody.Json $ encode (Codec.list Codec.string) recipes
     }
@@ -44,7 +45,7 @@ loadRecipesWithSteps = do
 
 selectRecipe :: ∀ m r. MonadAff m => String -> ExceptV (STRING_ERROR + r) m Unit
 selectRecipe recipe = 
-  expectRequest' $ defaultRequest 
+  expectRequest $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SelectRecipe
     , content = Just $ RequestBody.String recipe
     }
@@ -60,15 +61,15 @@ loadState = do
   ingredients <- loadIngredients
   Codec.decode (appStateCodec ingredients) body # lmap (Codec.printJsonDecodeError >>> stringError) # except
 
-inputRecipes :: Widget HTML Unit 
+inputRecipes :: ∀ r. ExceptVWidget (STRING_ERROR r) HTML Unit 
 inputRecipes = do 
-  recipes <- (text "Loading..." <|> exceptToWidget loadRecipes)
+  recipes <- text "Loading..." <|> ExceptVWidget loadRecipes
   let recipeListItems = recipes <#> \name -> {name, checked: false}
-  selected <- recipeList recipeListItems Nil
-  exceptToWidget $ submitRecipes selected
+  selected <- liftWidget $ recipeList recipeListItems Nil
+  ExceptVWidget $ submitRecipes selected
   liftEffect (window >>= location >>= reload)
 
-useCaseBar :: CurrentUseCase -> Widget HTML Unit
+useCaseBar :: ∀ r. CurrentUseCase -> ExceptVWidget (STRING_ERROR r) HTML Unit
 useCaseBar currentUseCase = do
   useCase <- div [Props.className "nav-bar" ]
     [ span (if currentUseCase == Shopping then [Props.className "highlighted"] else [])
@@ -77,32 +78,33 @@ useCaseBar currentUseCase = do
       [ button [Props.onClick $> Cooking, Props.className "nav-button"] [text "COOK"] ]
     ]
 
-  liftAff $ expectRequest $ defaultRequest
+  ExceptVWidget $ expectRequest $ defaultRequest
     { url = Routing.print Routing.SetUseCase, method = Left POST
     , content = Just $ Json $ encode useCaseCodec useCase
     }
 
   liftEffect (window >>= location >>= reload)
 
-content :: Widget HTML Unit
+content :: ∀ r. ExceptVWidget (STRING_ERROR r) HTML Unit
 content = do
-  appState <- (text "Loading..." <|> exceptToWidget loadState)
-  ( useCaseBar appState.useCase 
+  appState <- text "Loading..." <|> ExceptVWidget loadState
+  ( useCaseBar appState.useCase
     <|>
     div [Props.style { marginLeft: "1em" }] 
       [ case appState of 
         {useCase: Shopping, shoppingState: InputRecipes} -> inputRecipes
-        {useCase: Shopping, shoppingState: CheckKitchen ingredients} -> pantryList (ingredients <#> {checked: false, isCustom: false, item: _})
-        {useCase: Shopping, shoppingState: BuyGroceries ingredients custom} -> 
+        {useCase: Shopping, shoppingState: CheckKitchen ingredients} ->
+          pantryList (ingredients <#> {checked: false, isCustom: false, item: _})
+        {useCase: Shopping, shoppingState: BuyGroceries ingredients custom} ->
           groceryList 
             (  (ingredients <#> {checked: false, isCustom: false, item: _})
             <> (custom <#> {checked: false, isCustom: true, item: _})
             )
 
         {useCase: Cooking, cookingState: Nothing} -> do
-          recipes <- (text "Loading..." <|> exceptToWidget loadRecipesWithSteps)
+          recipes <- text "Loading..." <|> ExceptVWidget loadRecipesWithSteps
           selectedRecipe <- recipeSelection $ List.fromFoldable recipes
-          exceptToWidget $ selectRecipe selectedRecipe
+          ExceptVWidget $ selectRecipe selectedRecipe
           liftEffect (window >>= location >>= reload)
 
         {useCase: Cooking, cookingState: Just cookingState} -> recipeStepList cookingState
@@ -112,4 +114,11 @@ content = do
   )
 
 main :: Effect Unit
-main = runWidgetInDom "contents" content
+main =
+  runExceptVWidget content
+  # handleErrors
+    { stringError: \err -> do
+        log ("String error: " <> err)
+        text "Failed to run. See log for error details" 
+    }
+  # runWidgetInDom "contents"

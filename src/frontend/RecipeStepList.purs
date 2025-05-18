@@ -8,14 +8,16 @@ import Data.HTTP.Method (Method(..))
 import Recipes.API (SetRecipeStepStatusValue)
 import Recipes.API as Routing
 import Recipes.DataStructures (CookingState, RecipeStep, recipeStepCodec)
+import Recipes.Frontend.ExceptVWidget (ExceptVWidget(..))
 import Recipes.Frontend.Http (expectRequest)
+import Recipes.Frontend.MUI (class ReactWidget)
 import Recipes.Frontend.MUI as MUI
 import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
 data RecipeStepListAction = CheckStep SetRecipeStepStatusValue | ResetRecipe 
-recipeStepList :: CookingState -> Widget HTML Unit
+recipeStepList :: ∀ r. CookingState -> ExceptVWidget (STRING_ERROR r) HTML Unit
 recipeStepList state@{recipe, steps} = do
   action <- 
     h3' [text recipe]
@@ -32,19 +34,21 @@ recipeStepList state@{recipe, steps} = do
       recipeStepList $ state { steps = updatedSteps }
 
     ResetRecipe -> do
-      liftAff $ resetRecipe 
+      ExceptVWidget $ resetRecipe 
       liftEffect (window >>= location >>= reload)
 
   where
-    checkStep step = launchAff_ $ expectRequest $ defaultRequest 
+    checkStep step = launchAff_ $ logErrs $ expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print Routing.SetRecipeStatus
       , content = Just $ Json $ encode recipeStepCodec step
       }
 
     resetRecipe = expectRequest $ defaultRequest { method = Left GET, url = Routing.print Routing.ResetRecipe }
 
+    logErrs = handleErrors { stringError: log }
 
-recipeStepListItem :: RecipeStep -> Widget HTML SetRecipeStepStatusValue
+
+recipeStepListItem :: ∀ w. ReactWidget w => Monad w => RecipeStep -> w SetRecipeStepStatusValue
 recipeStepListItem step = do
   div [ Props.className "multiline" ]
     [ MUI.checkbox $ MUI.checkboxProps { onClick: \(_::Boolean) -> unit, checked: step.completed, classes: {root: "multiline"} }

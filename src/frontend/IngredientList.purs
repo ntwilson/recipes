@@ -4,9 +4,10 @@ import Frontend.Prelude
 
 import Concur.React.Props as Props
 import Recipes.API (SetItemStatusValue)
+import Recipes.Frontend.MUI (class ReactWidget)
 import Recipes.Frontend.MUI as MUI
 
-ingredientListItem :: SetItemStatusValue -> Widget HTML SetItemStatusValue
+ingredientListItem :: ∀ w. ReactWidget w => Monad w => SetItemStatusValue -> w SetItemStatusValue
 ingredientListItem storeItem = do
   div'
     [ MUI.checkbox $ MUI.checkboxProps { onClick: \(_::Boolean) -> unit, checked: storeItem.checked }

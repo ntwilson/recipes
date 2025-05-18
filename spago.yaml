@@ -8,6 +8,7 @@ package:
       - WildcardInferredType
       - ScopeShadowing
       - ShadowedName
+      - HidingImport
 
   test:
     dependencies: []
@@ -16,6 +17,8 @@ package:
       - ImplicitQualifiedImport
       - WildcardInferredType
       - ScopeShadowing
+      - ShadowedName
+      - HidingImport
 
   dependencies:
     - aff
