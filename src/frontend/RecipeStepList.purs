@@ -17,7 +17,7 @@ import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
 data RecipeStepListAction = CheckStep SetRecipeStepStatusValue | ResetRecipe 
-recipeStepList :: ∀ r. CookingState -> ExceptVWidget (STRING_ERROR r) HTML Unit
+recipeStepList :: CookingState -> ExceptVWidget _ HTML Unit
 recipeStepList state@{recipe, steps} = do
   action <- 
     h3' [text recipe]
@@ -45,7 +45,7 @@ recipeStepList state@{recipe, steps} = do
 
     resetRecipe = expectRequest $ defaultRequest { method = Left GET, url = Routing.print Routing.ResetRecipe }
 
-    logErrs = handleErrors { stringError: log }
+    logErrs = handleErrors { httpError: log }
 
 
 recipeStepListItem :: ∀ w. ReactWidget w => Monad w => RecipeStep -> w SetRecipeStepStatusValue

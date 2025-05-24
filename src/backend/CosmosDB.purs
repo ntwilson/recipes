@@ -23,8 +23,6 @@ module Recipes.Backend.CosmosDB
   , printQueryError
   , query
   , readAll
-  , JSON_DECODE_ERROR
-  , jsonDecodeError
   , DBERROR
   , dbError
   , QUERY_ERROR
@@ -109,10 +107,6 @@ dbError = inj @"dbError"
 
 printDBError :: ∀ r a m. Monad m => ExceptV (DBERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
 printDBError = handleError { dbError: throwError <<< stringError <<< message }
-
-type JSON_DECODE_ERROR r = (jsonDecodeError :: JsonDecodeError | r)
-jsonDecodeError :: ∀ r. JsonDecodeError -> Variant (JSON_DECODE_ERROR + r)
-jsonDecodeError = inj @"jsonDecodeError"
 
 type QUERY_ERROR r = DBERROR + JSON_DECODE_ERROR + r
 

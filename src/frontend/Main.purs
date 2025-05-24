@@ -26,42 +26,43 @@ import Web.HTML (window)
 import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
-loadRecipes :: ∀ m r. MonadAff m => ExceptV (STRING_ERROR + r) m RecipesValue
+
+loadRecipes :: ∀ m. MonadAff m => ExceptV _ m RecipesValue
 loadRecipes = do
   {body} <- runRequest $ defaultRequest { url = Routing.print Routing.Recipes, responseFormat = ResponseFormat.json }
-  decode (Codec.array Codec.string) body # lmap (printJsonDecodeError >>> stringError) # except
+  decode (Codec.array Codec.string) body # lmap jsonDecodeError # except
 
-submitRecipes :: ∀ m r. MonadAff m => List String -> ExceptV (STRING_ERROR + r) m Unit
+submitRecipes :: ∀ m. MonadAff m => List String -> ExceptV _ m Unit
 submitRecipes recipes = 
   expectRequest $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SubmitRecipes
     , content = Just $ RequestBody.Json $ encode (Codec.list Codec.string) recipes
     }
 
-loadRecipesWithSteps :: ∀ m r. MonadAff m => ExceptV (STRING_ERROR + r) m RecipesValue 
+loadRecipesWithSteps :: ∀ m. MonadAff m => ExceptV _ m RecipesValue 
 loadRecipesWithSteps = do
   {body} <- runRequest $ defaultRequest { url = Routing.print Routing.RecipesWithSteps, responseFormat = ResponseFormat.json }
-  decode (Codec.array Codec.string) body # lmap (printJsonDecodeError >>> stringError) # except
+  decode (Codec.array Codec.string) body # lmap jsonDecodeError # except
 
-selectRecipe :: ∀ m r. MonadAff m => String -> ExceptV (STRING_ERROR + r) m Unit
+selectRecipe :: ∀ m. MonadAff m => String -> ExceptV _ m Unit
 selectRecipe recipe = 
   expectRequest $ defaultRequest 
     { method = Left POST, url = Routing.print Routing.SelectRecipe
     , content = Just $ RequestBody.String recipe
     }
 
-loadIngredients :: ∀ m r. MonadAff m => ExceptV (STRING_ERROR + r) m $ List Ingredient
+loadIngredients :: ∀ m. MonadAff m => ExceptV _ m $ List Ingredient
 loadIngredients = do
   {body} <- runRequest $ defaultRequest { url = Routing.print Routing.Ingredients, responseFormat = ResponseFormat.json }
-  decode (Codec.list ingredientCodec) body # lmap (printJsonDecodeError >>> stringError) # except
+  decode (Codec.list ingredientCodec) body # lmap jsonDecodeError # except
 
-loadState :: ∀ m r. MonadAff m => ExceptV (STRING_ERROR + r) m AppState 
+loadState :: ∀ m. MonadAff m => ExceptV _ m AppState 
 loadState = do
   {body} <- runRequest $ defaultRequest { url = Routing.print Routing.CurrentState, responseFormat = ResponseFormat.json }
   ingredients <- loadIngredients
-  Codec.decode (appStateCodec ingredients) body # lmap (Codec.printJsonDecodeError >>> stringError) # except
+  Codec.decode (appStateCodec ingredients) body # lmap jsonDecodeError # except
 
-inputRecipes :: ∀ r. ExceptVWidget (STRING_ERROR r) HTML Unit 
+inputRecipes :: ExceptVWidget _ HTML Unit 
 inputRecipes = do 
   recipes <- text "Loading..." <|> ExceptVWidget loadRecipes
   let recipeListItems = recipes <#> \name -> {name, checked: false}
@@ -69,7 +70,7 @@ inputRecipes = do
   ExceptVWidget $ submitRecipes selected
   liftEffect (window >>= location >>= reload)
 
-useCaseBar :: ∀ r. CurrentUseCase -> ExceptVWidget (STRING_ERROR r) HTML Unit
+useCaseBar :: CurrentUseCase -> ExceptVWidget _ HTML Unit
 useCaseBar currentUseCase = do
   useCase <- div [Props.className "nav-bar" ]
     [ span (if currentUseCase == Shopping then [Props.className "highlighted"] else [])
@@ -85,7 +86,7 @@ useCaseBar currentUseCase = do
 
   liftEffect (window >>= location >>= reload)
 
-content :: ∀ r. ExceptVWidget (STRING_ERROR r) HTML Unit
+content :: ExceptVWidget _ HTML Unit
 content = do
   appState <- text "Loading..." <|> ExceptVWidget loadState
   ( useCaseBar appState.useCase
@@ -117,8 +118,11 @@ main :: Effect Unit
 main =
   runExceptVWidget content
   # handleErrors
-    { stringError: \err -> do
-        log ("String error: " <> err)
-        text "Failed to run. See log for error details" 
+    { httpError: \err -> do
+        log ("HTTP error: " <> err)
+        text "Server error occurred. Please try again later. See log for error details"
+    , jsonDecodeError: \err -> do
+        log ("JSON decode error: " <> printJsonDecodeError err)
+        text "Invalid JSON value from the server. See log for error details"
     }
   # runWidgetInDom "contents"

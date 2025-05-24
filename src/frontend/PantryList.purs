@@ -17,7 +17,7 @@ import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
 data StoreItemSelection = AnotherItem SetItemStatusValue | FinishWithList
-pantryList :: ∀ r. List SetItemStatusValue -> ExceptVWidget (STRING_ERROR r) HTML Unit
+pantryList :: List SetItemStatusValue -> ExceptVWidget _ HTML Unit
 pantryList items = do 
   action <- 
     fold 

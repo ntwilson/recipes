@@ -1,4 +1,4 @@
-module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, mapCompose, revMapCompose, (<$$>), (<##>), (<$<), (>#>), caseMaybe, STRING_ERROR, stringError, ERROR, err, inj) where
+module Shared.Prelude (module Exports, APPLY, type ($), doubleMap, revDoubleMap, mapCompose, revMapCompose, (<$$>), (<##>), (<$<), (>#>), caseMaybe, STRING_ERROR, stringError, ERROR, err, JSON_DECODE_ERROR, jsonDecodeError, inj) where
 
 import Prelude
 
@@ -70,3 +70,7 @@ stringError = inj @"stringError"
 type ERROR r = (error :: Exports.Error | r)
 err :: ∀ r. Exports.Error -> Exports.Variant (ERROR r)
 err = inj @"error"
+
+type JSON_DECODE_ERROR r = (jsonDecodeError :: Exports.JsonDecodeError | r)
+jsonDecodeError :: ∀ r. Exports.JsonDecodeError -> Exports.Variant (JSON_DECODE_ERROR r)
+jsonDecodeError = inj @"jsonDecodeError"

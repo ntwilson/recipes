@@ -106,9 +106,9 @@ groceryItems items = do
       , content = Just $ RequestBody.Json $ encode setItemStatusCodec item
       }
 
-    logErrs = handleErrors { stringError: log }
+    logErrs = handleErrors { httpError: log }
 
-addItemToListForm :: ∀ r. ExceptVWidget (STRING_ERROR r) HTML GroceryListAction
+addItemToListForm :: ExceptVWidget _ HTML GroceryListAction
 addItemToListForm = do
   newItem <- addItemForm 
   submitItem newItem
@@ -122,7 +122,7 @@ addItemToListForm = do
         , content = Just $ RequestBody.Json $ encode ingredientCodec item
         }
 
-resetGroceryListButton :: ∀ r. ExceptVWidget (STRING_ERROR r) HTML GroceryListAction
+resetGroceryListButton :: ExceptVWidget _ HTML GroceryListAction
 resetGroceryListButton = do
   div' [button [Props.onClick] [text "Restart"]] # void
   continue <- liftEffect (window >>= confirm "Are you sure you wish to reset the grocery list?")
@@ -130,13 +130,13 @@ resetGroceryListButton = do
   then pure Nothing
   else do 
     ExceptVWidget resetState
-    pure $ Just ReloadThePage 
+    pure $ Just ReloadThePage
 
   where
     resetState = expectRequest $ defaultRequest { url = Routing.print ResetState }
 
 
-groceryList :: ∀ r a. List SetItemStatusValue -> ExceptVWidget (STRING_ERROR r) HTML a
+groceryList :: ∀ a. List SetItemStatusValue -> ExceptVWidget _ HTML a
 groceryList items = do 
   fold [ groceryItems items, addItemToListForm, resetGroceryListButton ]
   >>= case _ of
