@@ -9,6 +9,7 @@ import Data.List (List)
 import Data.List as List
 import Recipes.API (RecipeRoute(..), SetItemStatusValue, setItemStatusCodec)
 import Recipes.API as Routing
+import Recipes.Frontend.ExceptVWidget (ExceptVWidget(..))
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
 import Web.HTML (window)
@@ -16,7 +17,7 @@ import Web.HTML.Location (reload)
 import Web.HTML.Window (location)
 
 data StoreItemSelection = AnotherItem SetItemStatusValue | FinishWithList
-pantryList :: List SetItemStatusValue -> Widget HTML Unit
+pantryList :: List SetItemStatusValue -> ExceptVWidget _ HTML Unit
 pantryList items = do 
   action <- 
     fold 
@@ -28,11 +29,11 @@ pantryList items = do
 
   case action of 
     FinishWithList -> do
-      liftAff $ expectRequest $ defaultRequest { url = Routing.print SubmitPantry }
+      ExceptVWidget $ expectRequest $ defaultRequest { url = Routing.print SubmitPantry }
       liftEffect (window >>= location >>= reload)
 
     AnotherItem item -> do
-      liftAff $ checkItem item
+      ExceptVWidget $ checkItem item
       let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == item.item.ingredient.name then item else oldItem
       pantryList updatedItems
 

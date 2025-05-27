@@ -1,8 +1,7 @@
 module Recipes.Frontend.MUI where
 
-import Frontend.Prelude
+import Frontend.Prelude hiding (el, elLeaf)
 
-import Concur.Core (class LiftWidget)
 import Concur.Core.DOM as Concur
 import Concur.Core.Props (Props(..))
 import Control.MultiAlternative (class MultiAlternative)

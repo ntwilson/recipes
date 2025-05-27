@@ -4,6 +4,7 @@ import Frontend.Prelude
 
 import Affjax.RequestBody as RequestBody
 import Concur.React.Props as Props
+import Control.MultiAlternative (orr)
 import Data.HTTP.Method (Method(..))
 import Data.List as List
 import Data.List.NonEmpty as NEList
@@ -12,9 +13,10 @@ import React.SyntheticEvent (SyntheticMouseEvent)
 import Recipes.API (AddItemValue, RecipeRoute(..), SetItemStatusValue, setItemStatusCodec)
 import Recipes.API as Routing
 import Recipes.DataStructures (ingredientCodec)
+import Recipes.Frontend.ExceptVWidget (ExceptVWidget(..))
 import Recipes.Frontend.Http (expectRequest)
 import Recipes.Frontend.IngredientList (ingredientListItem)
-import Recipes.Frontend.MUI (TextSize(..))
+import Recipes.Frontend.MUI (class ReactWidget, TextSize(..))
 import Recipes.Frontend.MUI as MUI
 import Web.HTML (window)
 import Web.HTML.Location (reload)
@@ -40,17 +42,15 @@ storeList itemsByStore =
     store = (NEList.head itemsByStore).item.ingredient.store
 
     bySection :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
-    bySection = 
-      List.sortBy (comparing _.item.ingredient.section)
-      >>> List.groupBy (eq `on` _.item.ingredient.section)
+    bySection = List.groupAllBy (comparing _.item.ingredient.section)
 
 foreign import scrollToBottom :: Effect Unit
 
 type AddItemState = {name::String, store::String, section::String}
 data AddItemAction = EnterState AddItemState | Finish AddItemState
-addItemForm :: Widget HTML AddItemValue
+addItemForm :: ∀ w. ReactWidget w => MonadEffect w => w AddItemValue
 addItemForm = do
-  _ <- MUI.floatingActionButton 
+  MUI.floatingActionButton 
     ( MUI.fabProps @Unit { onClick: \(_::SyntheticMouseEvent) -> unit, classes: {root: "add-item-fab"} }) 
     [MUI.addIcon]
 
@@ -61,9 +61,9 @@ addItemForm = do
   pure { name, store, section: if section == "" then Nothing else Just section, common: false }
 
   where 
-    itemInfo :: {name::String, store::String, section::String} -> Widget HTML {name::String, store::String, section::String}
+    itemInfo :: {name::String, store::String, section::String} -> w {name::String, store::String, section::String}
     itemInfo state@{name, store, section} = do
-      formResult <- fold 
+      formResult <- orr 
         [ textField { label: "Name", value: name, onChange: EnterState <<< state {name = _}, autoFocus: true }
         , textField { label: "Store", value: store, onChange: EnterState <<< state {store = _}, autoFocus: false }
         , textField { label: "Section (optional)", value: section, onChange: EnterState <<< state {section = _}, autoFocus: false }
@@ -75,7 +75,7 @@ addItemForm = do
         EnterState newState -> itemInfo newState
         Finish newState -> pure newState
 
-    textField :: { label :: String, value :: String, onChange :: String -> AddItemAction, autoFocus :: Boolean } -> Widget HTML AddItemAction
+    textField :: { label :: String, value :: String, onChange :: String -> AddItemAction, autoFocus :: Boolean } -> w AddItemAction
     textField {label, value, onChange, autoFocus} =
       MUI.textField 
         ( MUI.textFieldProps
@@ -89,9 +89,9 @@ data GroceryListStep
 
 type GroceryListAction = Maybe GroceryListStep
 
-groceryItems :: List SetItemStatusValue -> Widget HTML GroceryListAction
+groceryItems :: ∀ w. LiftWidget HTML w => MonadEffect w => List SetItemStatusValue -> w GroceryListAction
 groceryItems items = do
-  newCheckedItem <- intercalate hr' (byStore items <#> storeList)
+  newCheckedItem <- liftWidget $ intercalate hr' (byStore items <#> storeList)
 
   liftEffect $ checkItem newCheckedItem
   let updatedItems = items <#> \oldItem -> if oldItem.item.ingredient.name == newCheckedItem.item.ingredient.name then newCheckedItem else oldItem
@@ -99,44 +99,44 @@ groceryItems items = do
 
   where 
     byStore :: List SetItemStatusValue -> List $ NonEmptyList SetItemStatusValue
-    byStore = 
-      List.sortBy (comparing _.item.ingredient.store)
-      >>> List.groupBy (eq `on` _.item.ingredient.store)
+    byStore = List.groupAllBy (comparing _.item.ingredient.store)
 
-    checkItem item = launchAff_ $ expectRequest $ defaultRequest 
+    checkItem item = launchAff_ $ logErrs $ expectRequest $ defaultRequest 
       { method = Left POST, url = Routing.print SetItemStatus
       , content = Just $ RequestBody.Json $ encode setItemStatusCodec item
       }
 
-addItemToListForm :: Widget HTML GroceryListAction
+    logErrs = handleErrors { httpError: log }
+
+addItemToListForm :: ExceptVWidget _ HTML GroceryListAction
 addItemToListForm = do
   newItem <- addItemForm 
-  liftAff $ submitItem newItem
+  submitItem newItem
   pure $ Just ReloadThePage
 
   where
 
     submitItem item = 
-      expectRequest $ defaultRequest
+      ExceptVWidget $ expectRequest $ defaultRequest
         { method = Left POST, url = Routing.print AddItem
         , content = Just $ RequestBody.Json $ encode ingredientCodec item
         }
 
-resetGroceryListButton :: Widget HTML GroceryListAction
+resetGroceryListButton :: ExceptVWidget _ HTML GroceryListAction
 resetGroceryListButton = do
   div' [button [Props.onClick] [text "Restart"]] # void
   continue <- liftEffect (window >>= confirm "Are you sure you wish to reset the grocery list?")
   if not continue 
   then pure Nothing
   else do 
-    liftAff resetState
-    pure $ Just ReloadThePage 
+    ExceptVWidget resetState
+    pure $ Just ReloadThePage
 
   where
     resetState = expectRequest $ defaultRequest { url = Routing.print ResetState }
 
 
-groceryList :: ∀ a. List SetItemStatusValue -> Widget HTML a
+groceryList :: ∀ a. List SetItemStatusValue -> ExceptVWidget _ HTML a
 groceryList items = do 
   fold [ groceryItems items, addItemToListForm, resetGroceryListButton ]
   >>= case _ of

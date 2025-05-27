@@ -23,8 +23,6 @@ module Recipes.Backend.CosmosDB
   , printQueryError
   , query
   , readAll
-  , JSON_DECODE_ERROR
-  , jsonDecodeError
   , DBERROR
   , dbError
   , QUERY_ERROR
@@ -40,9 +38,7 @@ import Control.Monad.Except (except)
 import Control.Promise (Promise, toAff)
 import Data.Array as Array
 import Data.Newtype (class Newtype, wrap)
-import Data.Variant (Variant, inj)
 import Effect.Uncurried (EffectFn5, runEffectFn5)
-import Type.Proxy (Proxy(..))
 
 -- | A `Container` `c` is just a RawContainer containing elements of type `a` with a `PartitionKey` and a name defined.
 -- | Each `Container` must have exactly one name and one partition key, and this class ensures that you can't accidentally use 
@@ -69,7 +65,7 @@ type ConnectConfig =
 
 connectionConfig :: ∀ r m. MonadEffect m => ExceptV (STRING_ERROR + r) m ConnectConfig
 connectionConfig = do
-  databaseId <- env "COSMOS_DB"
+  databaseId <- liftEffect $ env "COSMOS_DB"
 
   pure $ 
     { endpoint: "https://ntw-cosmos.documents.azure.com:443/"
@@ -77,11 +73,7 @@ connectionConfig = do
     }
 
   where 
-  env :: String -> ExceptV (STRING_ERROR + r) m String
-  env keyname =
-    liftEffect (lookupEnv keyname) >>= case _ of
-      Nothing -> throwError $ stringError $ i"No "keyname" environment variable found"
-      Just key -> pure key
+  env keyname = lookupEnv keyname <#> fromMaybe "wilson-recipes"
 
 catchEffect :: ∀ r a m. MonadEffect m => Effect a -> ExceptV (STRING_ERROR + r) m a
 catchEffect eff = try eff <#> lmap (stringError <<< message) # liftEffect # wrap
@@ -111,14 +103,10 @@ getContainer = do
 
 type DBERROR r = (dbError :: Error | r)
 dbError :: ∀ r. Error -> Variant (DBERROR + r)
-dbError = inj (Proxy :: _ "dbError")
+dbError = inj @"dbError"
 
 printDBError :: ∀ r a m. Monad m => ExceptV (DBERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
 printDBError = handleError { dbError: throwError <<< stringError <<< message }
-
-type JSON_DECODE_ERROR r = (jsonDecodeError :: JsonDecodeError | r)
-jsonDecodeError :: ∀ r. JsonDecodeError -> Variant (JSON_DECODE_ERROR + r)
-jsonDecodeError = inj (Proxy :: _ "jsonDecodeError")
 
 type QUERY_ERROR r = DBERROR + JSON_DECODE_ERROR + r
 
@@ -164,7 +152,7 @@ pointDelete container itemID key =
 
 type NO_MATCH_ERROR r = (noMatchError :: {collectionName :: String} | r)
 noMatchError :: ∀ r. String -> Variant (NO_MATCH_ERROR r)
-noMatchError collectionName = inj (Proxy :: _ "noMatchError") {collectionName}
+noMatchError collectionName = inj @"noMatchError" {collectionName}
 
 printNoMatchError :: ∀ r a m. Monad m => ExceptV (NO_MATCH_ERROR + STRING_ERROR + r) m a -> ExceptV (STRING_ERROR + r) m a
 printNoMatchError = handleError { noMatchError: \{collectionName} -> throwError $ stringError $ i"No matching "collectionName" record was found in the database to delete" }
